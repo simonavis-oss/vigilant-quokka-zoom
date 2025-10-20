@@ -10,6 +10,7 @@ import { PrintQueueItem } from "@/types/print-queue";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import QueueItemActions from "@/components/queue/QueueItemActions";
+import AddJobToQueueDialog from "@/components/queue/AddJobToQueueDialog";
 
 const getStatusBadge = (status: PrintQueueItem['status']) => {
   switch (status) {
@@ -60,9 +61,12 @@ const PrintQueuePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold flex items-center">
-        <ListOrdered className="h-7 w-7 mr-3" /> Print Queue
-      </h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold flex items-center">
+          <ListOrdered className="h-7 w-7 mr-3" /> Print Queue
+        </h1>
+        <AddJobToQueueDialog />
+      </div>
       
       <Card>
         <CardHeader>
