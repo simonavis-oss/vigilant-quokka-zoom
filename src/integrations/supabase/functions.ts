@@ -34,6 +34,13 @@ export interface StartPrintResponse {
   message: string;
 }
 
+export interface CompletionResponse {
+  status: "success" | "error" | "noop";
+  message?: string;
+  completedJobName?: string;
+  startedJobName?: string | null;
+}
+
 export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus> => {
   const { data, error } = await supabase.functions.invoke("printer-status", {
     body: { id: printerId },
@@ -117,4 +124,20 @@ export const cancelPrintJob = async (jobId: string): Promise<CancelResponse> => 
   }
 
   return data as CancelResponse;
+};
+
+export const handlePrintCompletion = async (printerId: string): Promise<CompletionResponse> => {
+  const { data, error } = await supabase.functions.invoke("handle-print-completion", {
+    body: { printer_id: printerId },
+  });
+
+  if (error) {
+    throw new Error(`Edge Function Error: ${error.message}`);
+  }
+  
+  if (data.status === "error") {
+    throw new Error(data.message || "Print completion handling failed.");
+  }
+
+  return data as CompletionResponse;
 };
