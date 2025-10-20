@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "@/context/SessionContext";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
-import { useState } from "react";
+import { PlusCircle, Search } from "lucide-react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import PrinterConnectionWizard from "@/components/printer/PrinterConnectionWizard";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +11,9 @@ import { Printer } from "@/types/printer";
 import PrinterCard from "@/components/printer/PrinterCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFarmStatus } from "@/hooks/use-farm-status";
-import { useTotalPrintTime } from "@/hooks/use-total-print-time"; // Import new hook
+import { useTotalPrintTime } from "@/hooks/use-total-print-time";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const fetchPrinters = async (userId: string): Promise<Printer[]> => {
   const { data, error } = await supabase
@@ -25,9 +27,13 @@ const fetchPrinters = async (userId: string): Promise<Printer[]> => {
   return data as Printer[];
 };
 
+type ConnectionTypeFilter = Printer['connection_type'] | 'all';
+
 const Index = () => {
   const { user } = useSession();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<ConnectionTypeFilter>('all');
   
   const { data: printers, isLoading: isPrintersLoading, refetch } = useQuery<Printer[]>({
     queryKey: ["printers", user?.id],
@@ -36,12 +42,22 @@ const Index = () => {
   });
   
   const { totalPrinters, onlineCount, activePrints, isLoading: isStatusLoading } = useFarmStatus(printers);
-  const { totalPrintTime, isLoading: isTimeLoading } = useTotalPrintTime(); // Use new hook
+  const { totalPrintTime, isLoading: isTimeLoading } = useTotalPrintTime();
   
   const handlePrinterAdded = () => {
     setIsWizardOpen(false);
     refetch(); // Refetch the list after a new printer is added
   };
+
+  const filteredPrinters = useMemo(() => {
+    if (!printers) return [];
+    
+    return printers.filter(printer => {
+      const matchesSearch = printer.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === 'all' || printer.connection_type === filterType;
+      return matchesSearch && matchesType;
+    });
+  }, [printers, searchTerm, filterType]);
 
   const printerCount = totalPrinters;
   const isLoading = isPrintersLoading || isStatusLoading || isTimeLoading;
@@ -148,11 +164,44 @@ const Index = () => {
       ) : (
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Your Printers</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {printers.map((printer) => (
-              <PrinterCard key={printer.id} printer={printer} />
-            ))}
+          
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search printers by name..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Select 
+              onValueChange={(value: ConnectionTypeFilter) => setFilterType(value)} 
+              defaultValue="all"
+            >
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Filter by Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="moonraker">Moonraker</SelectItem>
+                <SelectItem value="octoprint">OctoPrint</SelectItem>
+                <SelectItem value="klipper_go">Klipper Go</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {filteredPrinters.length === 0 ? (
+            <div className="p-8 border rounded-lg bg-card text-center">
+              <p className="text-muted-foreground">No printers match your search or filter criteria.</p>
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredPrinters.map((printer) => (
+                <PrinterCard key={printer.id} printer={printer} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
