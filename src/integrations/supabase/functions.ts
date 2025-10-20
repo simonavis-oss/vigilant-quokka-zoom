@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Printer } from "@/types/printer";
 
 // Define the structure of the data returned by the Edge Function
 export interface PrinterStatus {
@@ -56,39 +57,93 @@ export interface PrinterFile {
   size: number;
 }
 
-export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus> => {
-  const { data, error } = await supabase.functions.invoke("printer-status", {
-    body: { id: printerId },
+// New function to communicate with cloud-connected printers
+const invokeCloudProxy = async (printerId: string, command: object) => {
+  const { data, error } = await supabase.functions.invoke("cloud-proxy", {
+    body: { printer_id: printerId, command },
   });
 
   if (error) {
     const response = await error.context.json();
-    throw new Error(response.error || `Edge Function Error: ${error.message}`);
+    throw new Error(response.error || `Cloud Proxy Error: ${error.message}`);
   }
   
   if (data.error) {
-    throw new Error(`Printer Status Error: ${data.error}`);
+    throw new Error(data.error);
   }
 
-  return data.data as PrinterStatus;
+  return data;
 };
 
-export const sendPrinterCommand = async (printerId: string, command: string): Promise<CommandResponse> => {
-  const { data, error } = await supabase.functions.invoke("printer-command", {
-    body: { id: printerId, command },
-  });
+export const getPrinterStatus = async (printer: Printer): Promise<PrinterStatus> => {
+  if (printer.connection_type === 'cloud_agent') {
+    const response = await invokeCloudProxy(printer.id, { type: 'GET_STATUS' });
+    return response.data as PrinterStatus;
+  } else {
+    // Direct connection for locally managed printers
+    const { data, error } = await supabase.functions.invoke("printer-status", {
+      body: { id: printer.id },
+    });
 
-  if (error) {
-    const response = await error.context.json();
-    throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
-  }
-  
-  if (data.status === "error") {
-    throw new Error(data.message);
-  }
+    if (error) {
+      const response = await error.context.json();
+      throw new Error(response.error || `Edge Function Error: ${error.message}`);
+    }
+    
+    if (data.error) {
+      throw new Error(`Printer Status Error: ${data.error}`);
+    }
 
-  return data as CommandResponse;
+    return data.data as PrinterStatus;
+  }
 };
+
+export const sendPrinterCommand = async (printer: Printer, command: string): Promise<CommandResponse> => {
+   if (printer.connection_type === 'cloud_agent') {
+    const response = await invokeCloudProxy(printer.id, { type: 'SEND_COMMAND', payload: { command } });
+    return response as CommandResponse;
+  } else {
+    const { data, error } = await supabase.functions.invoke("printer-command", {
+      body: { id: printer.id, command },
+    });
+
+    if (error) {
+      const response = await error.context.json();
+      throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
+    }
+    
+    if (data.status === "error") {
+      throw new Error(data.message);
+    }
+
+    return data as CommandResponse;
+  }
+};
+
+export const listPrinterFiles = async (printer: Printer): Promise<PrinterFile[]> => {
+  if (printer.connection_type === 'cloud_agent') {
+    const response = await invokeCloudProxy(printer.id, { type: 'LIST_FILES' });
+    return response.data as PrinterFile[];
+  } else {
+    const { data, error } = await supabase.functions.invoke("list-printer-files", {
+      body: { id: printer.id },
+    });
+
+    if (error) {
+      const response = await error.context.json();
+      throw new Error(response.error || `Edge Function Error: ${error.message}`);
+    }
+    
+    if (data.error) {
+      throw new Error(`List Files Error: ${data.error}`);
+    }
+
+    return data.data as PrinterFile[];
+  }
+};
+
+
+// --- Unchanged Functions (for now) ---
 
 export const assignPrintJob = async (jobId: string, printerId: string): Promise<AssignmentResponse> => {
   const { data, error } = await supabase.functions.invoke("assign-print-job", {
@@ -156,14 +211,12 @@ export const handlePrintCompletion = async (printerId: string): Promise<Completi
   return data as CompletionResponse;
 };
 
-export const pausePrint = async (printerId: string): Promise<CommandResponse> => {
-  // Klipper's specific command for pausing a print.
-  return sendPrinterCommand(printerId, "PAUSE");
+export const pausePrint = async (printer: Printer): Promise<CommandResponse> => {
+  return sendPrinterCommand(printer, "PAUSE");
 };
 
-export const resumePrint = async (printerId: string): Promise<CommandResponse> => {
-  // Klipper's specific command for resuming a print.
-  return sendPrinterCommand(printerId, "RESUME");
+export const resumePrint = async (printer: Printer): Promise<CommandResponse> => {
+  return sendPrinterCommand(printer, "RESUME");
 };
 
 export const cancelActivePrint = async (printerId: string, reason: string): Promise<CancelResponse> => {
@@ -198,23 +251,6 @@ export const bulkAssignPrintJobs = async (jobIds: string[], printerId: string): 
   }
 
   return data as BulkAssignmentResponse;
-};
-
-export const listPrinterFiles = async (printerId: string): Promise<PrinterFile[]> => {
-  const { data, error } = await supabase.functions.invoke("list-printer-files", {
-    body: { id: printerId },
-  });
-
-  if (error) {
-    const response = await error.context.json();
-    throw new Error(response.error || `Edge Function Error: ${error.message}`);
-  }
-  
-  if (data.error) {
-    throw new Error(`List Files Error: ${data.error}`);
-  }
-
-  return data.data as PrinterFile[];
 };
 
 export const confirmBedCleared = async (jobId: string): Promise<CommandResponse> => {
