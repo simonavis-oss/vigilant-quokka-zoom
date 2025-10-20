@@ -10,4 +10,5 @@ export type Printer = {
   webcam_url: string | null;
   cloud_printer_id: string | null;
   cloud_last_seen: string | null;
+  ai_failure_detection_enabled: boolean;
 };

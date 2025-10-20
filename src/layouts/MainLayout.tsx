@@ -17,15 +17,21 @@ import {
 import Sidebar from "@/components/Sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Printer } from "@/types/printer";
 import { fetchPrinters } from "@/integrations/supabase/queries";
 import { usePrintJobAutomation } from "@/hooks/use-print-job-automation";
+import { useFailureAlerts } from "@/hooks/useFailureAlerts";
+import FailureAlertDialog from "@/components/FailureAlertDialog";
+import { updateFailureAlertStatus } from "@/integrations/supabase/mutations";
+import { cancelActivePrint } from "@/integrations/supabase/functions";
+import { showSuccess, showError } from "@/utils/toast";
 
 const MainLayout = () => {
   const { user, isLoading } = useSession();
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: printers } = useQuery<Printer[]>({
     queryKey: ["printers", user?.id],
@@ -34,6 +40,25 @@ const MainLayout = () => {
   });
 
   usePrintJobAutomation(printers);
+  const { activeAlert, isAlertOpen, closeAlert } = useFailureAlerts();
+
+  const ignoreMutation = useMutation({
+    mutationFn: updateFailureAlertStatus,
+    onSuccess: () => {
+      showSuccess("Alert marked as ignored.");
+    },
+    onError: (err) => showError(err.message),
+  });
+
+  const stopPrintMutation = useMutation({
+    mutationFn: (printerId: string) => cancelActivePrint(printerId, "Cancelled by user after AI failure alert."),
+    onSuccess: (data) => {
+      showSuccess(data.message);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["printQueue"] });
+    },
+    onError: (err) => showError(err.message),
+  });
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading application...</div>;
@@ -94,6 +119,13 @@ const MainLayout = () => {
         <main className="flex-1 overflow-y-auto p-4 md:p-8"><Outlet /></main>
       </div>
       <footer className="border-t"><MadeWithDyad /></footer>
+      <FailureAlertDialog
+        alert={activeAlert}
+        isOpen={isAlertOpen}
+        onClose={closeAlert}
+        onIgnore={(alertId) => ignoreMutation.mutate({ alertId, status: 'ignored' })}
+        onStopPrint={(printerId) => stopPrintMutation.mutate(printerId)}
+      />
     </div>
   );
 };

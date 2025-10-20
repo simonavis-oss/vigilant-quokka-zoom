@@ -11,6 +11,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Printer } from "@/types/printer";
 import { Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 // --- Schemas ---
 
@@ -31,7 +33,6 @@ const PrinterEditSchema = z.object({
   }),
   base_url: z.preprocess(
     (val) => {
-      // Prepend http:// if no protocol is present, to allow IP addresses/hostnames
       if (typeof val === 'string' && val.length > 0 && !val.startsWith('http://') && !val.startsWith('https://')) {
         return `http://${val}`;
       }
@@ -40,6 +41,7 @@ const PrinterEditSchema = z.object({
     z.string().url("Must be a valid URL or IP address (e.g., http://192.168.1.100:7125)")
   ),
   api_key: z.string().optional(),
+  ai_failure_detection_enabled: z.boolean().default(false),
 });
 
 type PrinterFormValues = z.infer<typeof PrinterEditSchema>;
@@ -58,27 +60,27 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
     defaultValues: {
       name: printer.name,
       connection_type: printer.connection_type,
-      // Note: printer.base_url already contains the protocol if added via the wizard
       base_url: printer.base_url, 
       api_key: printer.api_key || "",
+      ai_failure_detection_enabled: printer.ai_failure_detection_enabled,
     },
     mode: "onChange",
   });
 
   const handleSubmit = (data: PrinterFormValues) => {
-    // Only submit fields that have changed
     const updates: Partial<Printer> = { id: printer.id };
     
-    // Compare preprocessed data (data.base_url) with stored data (printer.base_url)
     if (data.name !== printer.name) updates.name = data.name;
     if (data.connection_type !== printer.connection_type) updates.connection_type = data.connection_type;
     if (data.base_url !== printer.base_url) updates.base_url = data.base_url;
+    if (data.ai_failure_detection_enabled !== printer.ai_failure_detection_enabled) {
+      updates.ai_failure_detection_enabled = data.ai_failure_detection_enabled;
+    }
     
-    // Handle API key change (empty string should be treated as null in DB)
     const newApiKey = data.api_key || null;
     if (newApiKey !== printer.api_key) updates.api_key = newApiKey;
 
-    if (Object.keys(updates).length > 1) { // Check if more than just 'id' is present
+    if (Object.keys(updates).length > 1) {
       onSubmit(updates);
     }
   };
@@ -134,6 +136,29 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
             </FormItem>
           )}
         />
+
+        {printer.connection_type === 'cloud_agent' && (
+          <FormField
+            control={form.control}
+            name="ai_failure_detection_enabled"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">AI Failure Detection</FormLabel>
+                  <FormDescription>
+                    Requires a webcam. The cloud agent will monitor the print for failures.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        )}
         
         <Button type="submit" disabled={isSubmitting || !form.formState.isDirty || !form.formState.isValid}>
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

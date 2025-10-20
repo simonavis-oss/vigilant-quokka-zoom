@@ -46,3 +46,14 @@ export const updateProfile = async (profile: Partial<Profile>): Promise<void> =>
     throw new Error(`Failed to update profile: ${error.message}`);
   }
 };
+
+export const updateFailureAlertStatus = async ({ alertId, status }: { alertId: string; status: string }): Promise<void> => {
+  const { error } = await supabase
+    .from("failure_alerts")
+    .update({ status })
+    .eq("id", alertId);
+
+  if (error) {
+    throw new Error(`Failed to update alert status: ${error.message}`);
+  }
+};
