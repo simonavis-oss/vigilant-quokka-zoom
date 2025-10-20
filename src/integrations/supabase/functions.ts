@@ -39,10 +39,17 @@ export const sendPrinterCommand = async (printerId: string, command: string): Pr
   });
 
   if (error) {
+    // If the Edge Function returns a non-2xx status (e.g., 500 on mock failure), 
+    // the client throws a generic error. We catch it here and provide a clearer message.
+    // The Edge Function is designed to return a 500 status on mock failure (see step 6 in index.ts).
+    if (error.message.includes("non-2xx status code")) {
+      throw new Error(`Command failed. The printer API may be unreachable or the command was rejected.`);
+    }
     throw new Error(`Edge Function Invocation Error: ${error.message}`);
   }
   
   if (data.status === "error") {
+    // This handles cases where the Edge Function returns a 200 status but contains an application error payload.
     throw new Error(data.message);
   }
 
