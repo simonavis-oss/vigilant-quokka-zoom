@@ -42,7 +42,7 @@ const validateUrlOrIp = (val: string) => {
 
 const PrinterSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "octoprint", "cloud_agent"], {
+  connection_type: z.enum(["moonraker", "cloud_agent"], {
     required_error: "Please select a connection type.",
   }),
   base_url: z.string().optional(),
@@ -161,8 +161,7 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="moonraker">Local Network (Moonraker)</SelectItem>
-                      <SelectItem value="octoprint">Local Network (OctoPrint)</SelectItem>
-                      <SelectItem value="cloud_agent"><div className="flex items-center">Cloud Agent (via Obico-like service)<Cloud className="ml-2 h-4 w-4 text-blue-500"/></div></SelectItem>
+                      <SelectItem value="cloud_agent"><div className="flex items-center">Cloud Agent<Cloud className="ml-2 h-4 w-4 text-blue-500"/></div></SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -189,22 +188,6 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                     </FormItem>
                   )}
                 />
-                
-                {connectionType === "octoprint" && (
-                  <FormField
-                    control={form.control}
-                    name="api_key"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>OctoPrint API Key (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter API Key" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
               </>
             )}
 

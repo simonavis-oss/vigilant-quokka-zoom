@@ -26,7 +26,7 @@ import { Loader2 } from "lucide-react";
 
 const PrinterEditSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "octoprint", "cloud_agent"], {
+  connection_type: z.enum(["moonraker", "cloud_agent"], {
     required_error: "Please select a connection type.",
   }),
   base_url: z.preprocess(
@@ -83,8 +83,6 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
     }
   };
 
-  const connectionType = form.watch("connection_type");
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -116,7 +114,6 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="moonraker">Moonraker / Mainsail / Fluid (Recommended)</SelectItem>
-                  <SelectItem value="octoprint">Octoprint</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -138,22 +135,6 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
           )}
         />
         
-        {connectionType === "octoprint" && (
-          <FormField
-            control={form.control}
-            name="api_key"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>OctoPrint API Key (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter API Key" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
         <Button type="submit" disabled={isSubmitting || !form.formState.isDirty || !form.formState.isValid}>
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Changes
