@@ -38,8 +38,11 @@ export interface StartPrintResponse {
 export interface CompletionResponse {
   status: "success" | "error" | "noop";
   message?: string;
-  completedJobName?: string;
-  startedJobName?: string | null;
+  completedJob?: {
+    id: string;
+    file_name: string;
+    printer_name: string;
+  };
 }
 
 export interface BulkAssignmentResponse {
@@ -212,4 +215,21 @@ export const listPrinterFiles = async (printerId: string): Promise<PrinterFile[]
   }
 
   return data.data as PrinterFile[];
+};
+
+export const confirmBedCleared = async (jobId: string): Promise<CommandResponse> => {
+  const { data, error } = await supabase.functions.invoke("confirm-bed-cleared", {
+    body: { job_id: jobId },
+  });
+
+  if (error) {
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
+  }
+  
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  return data as CommandResponse;
 };

@@ -1,12 +1,12 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, XCircle, Loader2 } from "lucide-react";
+import { Trash2, XCircle, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintQueueItem } from "@/types/print-queue";
 import { showSuccess, showError } from "@/utils/toast";
 import DeleteConfirmationDialog from "../DeleteConfirmationDialog";
 import { supabase } from "@/integrations/supabase/client";
-import { cancelPrintJob } from "@/integrations/supabase/functions";
+import { cancelPrintJob, confirmBedCleared } from "@/integrations/supabase/functions";
 import AssignPrinterDropdown from "./AssignPrinterDropdown";
 import StartPrintButton from "./StartPrintButton";
 import CancellationDialog from "../CancellationDialog";
@@ -47,6 +47,18 @@ const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
       showError(err.message);
     },
   });
+
+  const clearBedMutation = useMutation({
+    mutationFn: confirmBedCleared,
+    onSuccess: (data) => {
+      showSuccess(data.message);
+      queryClient.invalidateQueries({ queryKey: ["printQueue"] });
+      queryClient.invalidateQueries({ queryKey: ["printerStatus"] });
+    },
+    onError: (err) => {
+      showError(err.message);
+    },
+  });
   
   const handleDelete = () => {
     deleteMutation.mutate(item.id);
@@ -56,7 +68,29 @@ const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
     cancelMutation.mutate({ jobId: item.id, reason });
   };
 
-  const isActionPending = deleteMutation.isPending || cancelMutation.isPending;
+  const handleClearBed = () => {
+    clearBedMutation.mutate(item.id);
+  };
+
+  const isActionPending = deleteMutation.isPending || cancelMutation.isPending || clearBedMutation.isPending;
+
+  if (item.status === 'completed') {
+    return (
+      <Button 
+        variant="default" 
+        size="sm" 
+        onClick={handleClearBed}
+        disabled={isActionPending}
+      >
+        {clearBedMutation.isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <CheckCircle className="h-4 w-4 mr-1" />
+        )}
+        Confirm Cleared
+      </Button>
+    );
+  }
 
   if (item.status === 'assigned' || item.status === 'printing') {
     return (

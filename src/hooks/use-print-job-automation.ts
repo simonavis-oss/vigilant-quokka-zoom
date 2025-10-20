@@ -1,8 +1,11 @@
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Printer } from "@/types/printer";
-import { getPrinterStatus, handlePrintCompletion } from "@/integrations/supabase/functions";
+import { getPrinterStatus, handlePrintCompletion, confirmBedCleared } from "@/integrations/supabase/functions";
 import { useEffect, useRef } from "react";
 import { showSuccess, showError } from "@/utils/toast";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { CheckCircle } from "lucide-react";
 
 type PrinterStatuses = { [printerId: string]: { is_printing: boolean } };
 
@@ -19,25 +22,43 @@ export const usePrintJobAutomation = (printers: Printer[] | undefined) => {
     })),
   });
 
+  const clearBedMutation = useMutation({
+    mutationFn: confirmBedCleared,
+    onSuccess: (data) => {
+      showSuccess(data.message);
+      queryClient.invalidateQueries({ queryKey: ["printQueue"] });
+      queryClient.invalidateQueries({ queryKey: ["printerStatus"] });
+    },
+    onError: (err) => {
+      showError(err.message);
+    },
+  });
+
   const completionMutation = useMutation({
     mutationFn: handlePrintCompletion,
     onSuccess: (data) => {
-      // Guard against false positives from mock data or unexpected responses
-      if (data.status !== 'success' || !data.completedJobName) {
-        // Log if we get an unexpected success-like status without a name, but don't show a toast.
-        if (data.status !== 'noop') {
-          console.warn("Print completion handler returned success status without a job name.", data);
-        }
+      if (data.status !== 'success' || !data.completedJob) {
         return;
       }
 
-      let message = `Print "${data.completedJobName}" completed.`;
-      if (data.startedJobName) {
-        message += ` Starting next print: "${data.startedJobName}".`;
-      } else {
-        message += ` No more jobs in queue for this printer.`;
-      }
-      showSuccess(message);
+      toast.info(`Print finished: ${data.completedJob.file_name}`, {
+        description: `Printer: ${data.completedJob.printer_name}. Please confirm the bed is clear to start the next print.`,
+        duration: Infinity, // Persist until dismissed or action is taken
+        action: (
+          <Button 
+            size="sm" 
+            onClick={() => {
+              clearBedMutation.mutate(data.completedJob!.id);
+              toast.dismiss();
+            }}
+            disabled={clearBedMutation.isPending}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Confirm Bed Cleared
+          </Button>
+        ),
+      });
+
       queryClient.invalidateQueries({ queryKey: ["printQueue"] });
       queryClient.invalidateQueries({ queryKey: ["printJobs"] });
     },

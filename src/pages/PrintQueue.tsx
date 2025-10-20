@@ -4,7 +4,7 @@ import { useSession } from "@/context/SessionContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ListOrdered, Loader2, Printer } from "lucide-react";
+import { ListOrdered, Loader2, Printer, CheckCircle } from "lucide-react";
 import { fetchPrintQueue } from "@/integrations/supabase/queries";
 import { PrintQueueItem } from "@/types/print-queue";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +22,8 @@ const getStatusBadge = (status: PrintQueueItem['status']) => {
       return <Badge className="bg-blue-500 hover:bg-blue-500/80">Assigned</Badge>;
     case 'printing':
       return <Badge className="bg-green-600 hover:bg-green-600/80"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Printing</Badge>;
+    case 'completed':
+      return <Badge className="bg-yellow-500 hover:bg-yellow-500/80"><CheckCircle className="mr-1 h-3 w-3" /> Awaiting Clearance</Badge>;
     case 'failed':
       return <Badge variant="destructive">Failed</Badge>;
     default:
@@ -41,7 +43,7 @@ const PrintQueuePage: React.FC = () => {
   });
 
   const pendingJobs = useMemo(() => queue?.filter(job => job.status === 'pending') || [], [queue]);
-  const activeJobs = useMemo(() => queue?.filter(job => job.status === 'assigned' || job.status === 'printing') || [], [queue]);
+  const activeJobs = useMemo(() => queue?.filter(job => ['assigned', 'printing', 'completed'].includes(job.status)) || [], [queue]);
 
   // --- Selection Logic ---
   const handleSelectJob = (jobId: string, isSelected: boolean) => {

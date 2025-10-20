@@ -6,26 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const startPrint = async (printer: { base_url: string, api_key: string | null, name: string }, fileName: string) => {
-  try {
-    const encodedFile = encodeURIComponent(fileName);
-    const moonrakerUrl = `${printer.base_url}/printer/print/start?filename=${encodedFile}`;
-    const headers: HeadersInit = { "Content-Type": "application/json" };
-    if (printer.api_key) {
-      headers["X-Api-Key"] = printer.api_key;
-    }
-    const response = await fetch(moonrakerUrl, { method: "POST", headers });
-    if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(errorBody.error.message || `Moonraker API returned status ${response.status}`);
-    }
-    return { success: true };
-  } catch (error) {
-    console.error(`Failed to auto-start print on ${printer.name}:`, error.message);
-    return { success: false };
-  }
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -54,7 +34,7 @@ serve(async (req) => {
 
   const { data: completedJob, error: findError } = await supabaseServiceRole
     .from("print_queue")
-    .select("*")
+    .select("*, printers(name)")
     .eq("printer_id", printerId)
     .eq("status", "printing")
     .single();
@@ -64,6 +44,8 @@ serve(async (req) => {
   }
 
   const duration = Math.round((new Date().getTime() - new Date(completedJob.assigned_at).getTime()) / 1000);
+  
+  // 1. Add to historical print_jobs table
   await supabaseServiceRole.from("print_jobs").insert({
     user_id: completedJob.user_id,
     printer_id: completedJob.printer_id,
@@ -74,35 +56,25 @@ serve(async (req) => {
     finished_at: new Date().toISOString(),
   });
 
-  await supabaseServiceRole.from("print_queue").delete().eq("id", completedJob.id);
-
-  const { data: nextJob, error: nextJobError } = await supabaseServiceRole
+  // 2. Update the job in the queue to 'completed' status
+  const { error: updateError } = await supabaseServiceRole
     .from("print_queue")
-    .select("*")
-    .eq("printer_id", printerId)
-    .eq("status", "assigned")
-    .order("priority", { ascending: false })
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
+    .update({ status: 'completed' })
+    .eq("id", completedJob.id);
 
-  if (nextJobError || !nextJob) {
-    return new Response(JSON.stringify({ status: "success", completedJobName: completedJob.file_name, startedJobName: null }), { status: 200, headers: corsHeaders });
+  if (updateError) {
+    console.error("Failed to update job to completed:", updateError);
+    // Don't stop, proceed to notify user anyway
   }
 
-  const { data: printer } = await supabaseServiceRole.from("printers").select("name, base_url, api_key").eq("id", printerId).single();
-  if (!printer) {
-    return new Response(JSON.stringify({ status: "error", message: "Printer not found for auto-start." }), { status: 404, headers: corsHeaders });
-  }
-
-  const startResult = await startPrint(printer, nextJob.file_name);
-
-  if (!startResult.success) {
-    await supabaseServiceRole.from("print_queue").update({ status: 'failed' }).eq("id", nextJob.id);
-    return new Response(JSON.stringify({ status: "error", completedJobName: completedJob.file_name, startedJobName: null, message: "Failed to auto-start next job." }), { status: 500, headers: corsHeaders });
-  }
-
-  await supabaseServiceRole.from("print_queue").update({ status: 'printing', assigned_at: new Date().toISOString() }).eq("id", nextJob.id);
-
-  return new Response(JSON.stringify({ status: "success", completedJobName: completedJob.file_name, startedJobName: nextJob.file_name }), { status: 200, headers: corsHeaders });
+  // 3. Return success with job details for the UI toast
+  return new Response(JSON.stringify({ 
+    status: "success", 
+    message: `Print finished for ${completedJob.file_name}.`,
+    completedJob: {
+      id: completedJob.id,
+      file_name: completedJob.file_name,
+      printer_name: completedJob.printers?.name || 'Unknown Printer'
+    }
+  }), { status: 200, headers: corsHeaders });
 });
