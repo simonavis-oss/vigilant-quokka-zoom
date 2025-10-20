@@ -12,6 +12,11 @@ export interface PrinterStatus {
   base_url: string;
 }
 
+export interface CommandResponse {
+  status: "success" | "error";
+  message: string;
+}
+
 export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus> => {
   const { data, error } = await supabase.functions.invoke("printer-status", {
     body: { id: printerId },
@@ -26,4 +31,20 @@ export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus
   }
 
   return data.data as PrinterStatus;
+};
+
+export const sendPrinterCommand = async (printerId: string, command: string): Promise<CommandResponse> => {
+  const { data, error } = await supabase.functions.invoke("printer-command", {
+    body: { id: printerId, command },
+  });
+
+  if (error) {
+    throw new Error(`Edge Function Invocation Error: ${error.message}`);
+  }
+  
+  if (data.status === "error") {
+    throw new Error(data.message);
+  }
+
+  return data as CommandResponse;
 };

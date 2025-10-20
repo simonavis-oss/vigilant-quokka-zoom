@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Send, Move, Thermometer, Loader2 } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { Printer } from "@/types/printer";
+import { sendPrinterCommand } from "@/integrations/supabase/functions";
 
 interface PrinterControlPanelProps {
   printer: Printer;
@@ -16,21 +17,18 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
 
   const handleSendGcode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gcode.trim()) return;
+    const command = gcode.trim();
+    if (!command) return;
 
     setIsSending(true);
     
-    // Simulate API call to an Edge Function for sending command
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
-
     try {
-      // In a real scenario, this would call an Edge Function that forwards the command
-      // const response = await sendPrinterCommand(printer.id, gcode);
+      await sendPrinterCommand(printer.id, command);
       
-      showSuccess(`Command sent to ${printer.name}: "${gcode.substring(0, 20)}..."`);
+      showSuccess(`Command sent to ${printer.name}: "${command.substring(0, 20)}..."`);
       setGcode("");
     } catch (error) {
-      showError("Failed to send command. Check printer connection.");
+      showError(`Failed to send command: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsSending(false);
     }
@@ -38,9 +36,14 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
   
   const handleQuickCommand = (command: string) => async () => {
     setIsSending(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    showSuccess(`Quick command executed: ${command}`);
-    setIsSending(false);
+    try {
+      await sendPrinterCommand(printer.id, command);
+      showSuccess(`Quick command executed: ${command}`);
+    } catch (error) {
+      showError(`Failed to execute quick command: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -73,11 +76,11 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-3 gap-4">
-          <Button variant="outline" onClick={handleQuickCommand("Home X/Y")} disabled={isSending}>Home X/Y</Button>
-          <Button variant="outline" onClick={handleQuickCommand("Home Z")} disabled={isSending}>Home Z</Button>
-          <Button variant="outline" onClick={handleQuickCommand("Move X+10")} disabled={isSending}>X +10</Button>
-          <Button variant="outline" onClick={handleQuickCommand("Move Y+10")} disabled={isSending}>Y +10</Button>
-          <Button variant="outline" onClick={handleQuickCommand("Move Z+1")} disabled={isSending}>Z +1</Button>
+          <Button variant="outline" onClick={handleQuickCommand("G28 X Y")} disabled={isSending}>Home X/Y</Button>
+          <Button variant="outline" onClick={handleQuickCommand("G28 Z")} disabled={isSending}>Home Z</Button>
+          <Button variant="outline" onClick={handleQuickCommand("G91\\nG0 X10")} disabled={isSending}>X +10</Button>
+          <Button variant="outline" onClick={handleQuickCommand("G91\\nG0 Y10")} disabled={isSending}>Y +10</Button>
+          <Button variant="outline" onClick={handleQuickCommand("G91\\nG0 Z1")} disabled={isSending}>Z +1</Button>
         </CardContent>
       </Card>
       
@@ -88,8 +91,8 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
-          <Button variant="outline" onClick={handleQuickCommand("Set Nozzle 200")} disabled={isSending}>Set Nozzle 200°C</Button>
-          <Button variant="outline" onClick={handleQuickCommand("Set Bed 60")} disabled={isSending}>Set Bed 60°C</Button>
+          <Button variant="outline" onClick={handleQuickCommand("M104 S200")} disabled={isSending}>Set Nozzle 200°C</Button>
+          <Button variant="outline" onClick={handleQuickCommand("M140 S60")} disabled={isSending}>Set Bed 60°C</Button>
         </CardContent>
       </Card>
     </div>
