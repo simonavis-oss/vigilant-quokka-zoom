@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Printer } from "@/types/printer";
 
 export const deletePrinter = async (printerId: string): Promise<void> => {
   const { error } = await supabase
@@ -8,5 +9,22 @@ export const deletePrinter = async (printerId: string): Promise<void> => {
 
   if (error) {
     throw new Error(`Failed to delete printer: ${error.message}`);
+  }
+};
+
+export const updatePrinter = async (printer: Partial<Printer>): Promise<void> => {
+  const { id, ...updates } = printer;
+  
+  if (!id) {
+    throw new Error("Printer ID is required for update.");
+  }
+
+  const { error } = await supabase
+    .from("printers")
+    .update(updates)
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Failed to update printer: ${error.message}`);
   }
 };

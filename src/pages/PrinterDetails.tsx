@@ -12,7 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getPrinterStatus, PrinterStatus } from "@/integrations/supabase/functions";
 import { Progress } from "@/components/ui/progress";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
-import { deletePrinter } from "@/integrations/supabase/mutations";
+import { deletePrinter, updatePrinter } from "@/integrations/supabase/mutations";
+import PrinterEditForm from "@/components/printer/PrinterEditForm";
 
 // --- Data Fetching ---
 
@@ -139,6 +140,22 @@ const PrinterDetails = () => {
     },
   });
   
+  const updateMutation = useMutation({
+    mutationFn: updatePrinter,
+    onSuccess: (data, variables) => {
+      showSuccess(`Printer "${variables.name || printer?.name}" updated successfully.`);
+      queryClient.invalidateQueries({ queryKey: ["printerDetails", id] }); // Refetch details
+      queryClient.invalidateQueries({ queryKey: ["printers"] }); // Update dashboard list
+    },
+    onError: (err) => {
+      showError(err.message);
+    },
+  });
+  
+  const handleUpdate = (updates: Partial<Printer>) => {
+    updateMutation.mutate(updates);
+  };
+  
   const handleDelete = () => {
     if (id) {
       deleteMutation.mutate(id);
@@ -252,11 +269,11 @@ const PrinterDetails = () => {
               <CardTitle>Printer Configuration</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>Connection URL: {printer.base_url}</p>
-              <p>Type: {printer.connection_type}</p>
-              <p className="mt-2 text-muted-foreground">
-                Advanced settings and connection details will be managed here.
-              </p>
+              <PrinterEditForm 
+                printer={printer} 
+                onSubmit={handleUpdate} 
+                isSubmitting={updateMutation.isPending} 
+              />
             </CardContent>
           </Card>
           
