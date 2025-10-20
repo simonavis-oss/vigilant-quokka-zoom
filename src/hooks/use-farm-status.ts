@@ -22,7 +22,7 @@ export const useFarmStatus = (printers: Printer[] | undefined): FarmStatus => {
   const printerStatusQueries = useQueries({
     queries: (printers || []).map((printer) => ({
       queryKey: ["printerStatus", printer.id],
-      queryFn: () => getPrinterStatus(printer.id),
+      queryFn: () => getPrinterStatus(printer),
       staleTime: 10000, // Use the same polling interval as PrinterStatusDisplay
       refetchInterval: 10000,
       // We don't want failed connections to block the entire dashboard, 
@@ -50,7 +50,7 @@ export const useFarmStatus = (printers: Printer[] | undefined): FarmStatus => {
       printers.forEach(printer => {
         queryClient.prefetchQuery({
           queryKey: ["printerStatus", printer.id],
-          queryFn: () => getPrinterStatus(printer.id),
+          queryFn: () => getPrinterStatus(printer),
         });
       });
     }

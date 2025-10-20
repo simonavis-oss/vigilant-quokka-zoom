@@ -23,7 +23,7 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
     setIsSending(true);
     
     try {
-      await sendPrinterCommand(printer.id, command);
+      await sendPrinterCommand(printer, command);
       
       showSuccess(`Command sent to ${printer.name}: "${command.substring(0, 20)}..."`);
       setGcode("");
@@ -37,7 +37,7 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
   const handleQuickCommand = (command: string) => async () => {
     setIsSending(true);
     try {
-      await sendPrinterCommand(printer.id, command);
+      await sendPrinterCommand(printer, command);
       showSuccess(`Quick command executed: ${command}`);
     } catch (error) {
       showError(`Failed to execute quick command: ${error instanceof Error ? error.message : "Unknown error"}`);

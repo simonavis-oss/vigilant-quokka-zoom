@@ -22,18 +22,16 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/SessionContext";
 import { showSuccess, showError } from "@/utils/toast";
-import { Loader2, PlusCircle } from "lucide-react";
+import { Loader2, PlusCircle, Cloud } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Helper function to validate URL/IP
 const validateUrlOrIp = (val: string) => {
   if (!val) return false;
-  
   let urlToTest = val;
   if (!urlToTest.startsWith('http://') && !urlToTest.startsWith('https://')) {
     urlToTest = `http://${urlToTest}`;
   }
-  
   try {
     new URL(urlToTest);
     return true;
@@ -44,15 +42,27 @@ const validateUrlOrIp = (val: string) => {
 
 const PrinterSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "octoprint", "klipper_go"], {
+  connection_type: z.enum(["moonraker", "octoprint", "klipper_go", "cloud_agent"], {
     required_error: "Please select a connection type.",
   }),
-  base_url: z.string()
-    .min(1, "Printer address is required.")
-    .refine(validateUrlOrIp, {
-      message: "Must be a valid URL or IP address (e.g., 192.168.1.100:7125).",
-    }),
+  base_url: z.string().optional(),
   api_key: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.connection_type !== 'cloud_agent') {
+    if (!data.base_url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["base_url"],
+        message: "Printer address is required for this connection type.",
+      });
+    } else if (!validateUrlOrIp(data.base_url)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["base_url"],
+        message: "Must be a valid URL or IP address (e.g., 192.168.1.100:7125).",
+      });
+    }
+  }
 });
 
 type PrinterFormValues = z.infer<typeof PrinterSchema>;
@@ -83,19 +93,25 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
       return;
     }
 
-    // Manually ensure the URL has a protocol before saving to DB
-    let finalBaseUrl = data.base_url;
-    if (!finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
-      finalBaseUrl = `http://${finalBaseUrl}`;
-    }
-
-    const { error } = await supabase.from("printers").insert({
+    let printerData: any = {
       user_id: user.id,
       name: data.name,
       connection_type: data.connection_type,
-      base_url: finalBaseUrl, // Use the protocol-prefixed URL for DB storage
-      api_key: data.api_key || null,
-    });
+    };
+
+    if (data.connection_type === 'cloud_agent') {
+      printerData.cloud_printer_id = crypto.randomUUID();
+      printerData.base_url = 'cloud'; // Placeholder
+    } else {
+      let finalBaseUrl = data.base_url!;
+      if (!finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
+        finalBaseUrl = `http://${finalBaseUrl}`;
+      }
+      printerData.base_url = finalBaseUrl;
+      printerData.api_key = data.api_key || null;
+    }
+
+    const { error } = await supabase.from("printers").insert(printerData);
 
     if (error) {
       console.error("Error adding printer:", error);
@@ -144,9 +160,10 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="moonraker">Moonraker / Mainsail / Fluid (Recommended)</SelectItem>
-                      <SelectItem value="octoprint">OctoPrint</SelectItem>
-                      <SelectItem value="klipper_go">Klipper Go / Marlin (Future Support)</SelectItem>
+                      <SelectItem value="moonraker">Local Network (Moonraker)</SelectItem>
+                      <SelectItem value="octoprint">Local Network (OctoPrint)</SelectItem>
+                      <SelectItem value="cloud_agent"><div className="flex items-center">Cloud Agent (via Obico-like service)<Cloud className="ml-2 h-4 w-4 text-blue-500"/></div></SelectItem>
+                      <SelectItem value="klipper_go" disabled>Klipper Go (Coming Soon)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -154,34 +171,42 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="base_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Printer Address (URL/IP)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {connectionType === "octoprint" && (
-              <FormField
-                control={form.control}
-                name="api_key"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>OctoPrint API Key (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter API Key" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+            {connectionType === 'cloud_agent' ? (
+              <div className="p-4 border rounded-lg bg-muted/50 text-sm text-muted-foreground">
+                After creating the printer, you will be provided with a setup script to run on a device (like a Raspberry Pi) on your printer's local network.
+              </div>
+            ) : (
+              <>
+                <FormField
+                  control={form.control}
+                  name="base_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Printer Address (URL/IP)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {connectionType === "octoprint" && (
+                  <FormField
+                    control={form.control}
+                    name="api_key"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>OctoPrint API Key (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter API Key" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-              />
+              </>
             )}
 
             <Button 

@@ -19,12 +19,12 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
 
   const { data: status, isLoading, isError } = useQuery<PrinterStatus>({
     queryKey: ["printerStatus", printer.id],
-    queryFn: () => getPrinterStatus(printer.id),
+    queryFn: () => getPrinterStatus(printer),
     refetchInterval: 10000,
   });
 
   const pauseMutation = useMutation({
-    mutationFn: () => pausePrint(printer.id),
+    mutationFn: () => pausePrint(printer),
     onSuccess: () => {
       showSuccess(`Pause command sent to ${printer.name}.`);
       queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });
@@ -35,7 +35,7 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
   });
 
   const resumeMutation = useMutation({
-    mutationFn: () => resumePrint(printer.id),
+    mutationFn: () => resumePrint(printer),
     onSuccess: () => {
       showSuccess(`Resume command sent to ${printer.name}.`);
       queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle, Play } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle, Play, Cloud } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +19,7 @@ import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
 import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel";
 import PrintJobHistoryPanel from "@/components/printer/PrintJobHistoryPanel";
 import CancellationDialog from "@/components/CancellationDialog";
+import CloudPrinterSetup from "@/components/printer/CloudPrinterSetup";
 
 // --- Data Fetching ---
 
@@ -29,171 +30,83 @@ const fetchPrinterDetails = async (printerId: string): Promise<Printer> => {
     .eq("id", printerId)
     .single();
 
-  if (error) {
-    throw new Error(error.message);
-  }
-  if (!data) {
-    throw new Error("Printer not found.");
-  }
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Printer not found.");
   return data as Printer;
 };
 
 // --- Components ---
 
-const PrinterOverviewTab = ({ printerId, printerName }: { printerId: string; printerName: string }) => {
+const PrinterOverviewTab = ({ printer }: { printer: Printer }) => {
   const queryClient = useQueryClient();
   const { data: status, isLoading: isStatusLoading, isError: isStatusError } = useQuery<PrinterStatus>({
-    queryKey: ["printerStatus", printerId],
-    queryFn: () => getPrinterStatus(printerId),
-    refetchInterval: 5000, // Poll status every 5 seconds
+    queryKey: ["printerStatus", printer.id],
+    queryFn: () => getPrinterStatus(printer),
+    refetchInterval: 5000,
   });
 
   const pauseMutation = useMutation({
-    mutationFn: () => pausePrint(printerId),
+    mutationFn: () => pausePrint(printer),
     onSuccess: () => {
-      showSuccess(`Pause command sent to ${printerName}.`);
-      queryClient.invalidateQueries({ queryKey: ["printerStatus", printerId] });
+      showSuccess(`Pause command sent to ${printer.name}.`);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });
     },
-    onError: (err) => {
-      showError(`Failed to pause: ${err.message}`);
-    },
+    onError: (err) => showError(`Failed to pause: ${err.message}`),
   });
 
   const resumeMutation = useMutation({
-    mutationFn: () => resumePrint(printerId),
+    mutationFn: () => resumePrint(printer),
     onSuccess: () => {
-      showSuccess(`Resume command sent to ${printerName}.`);
-      queryClient.invalidateQueries({ queryKey: ["printerStatus", printerId] });
+      showSuccess(`Resume command sent to ${printer.name}.`);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });
     },
-    onError: (err) => {
-      showError(`Failed to resume: ${err.message}`);
-    },
+    onError: (err) => showError(`Failed to resume: ${err.message}`),
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (reason: string) => cancelActivePrint(printerId, reason),
+    mutationFn: (reason: string) => cancelActivePrint(printer.id, reason),
     onSuccess: (data) => {
       showSuccess(data.message);
-      queryClient.invalidateQueries({ queryKey: ["printerStatus", printerId] });
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });
       queryClient.invalidateQueries({ queryKey: ["printQueue"] });
       queryClient.invalidateQueries({ queryKey: ["printJobs"] });
     },
-    onError: (err) => {
-      showError(`Failed to cancel: ${err.message}`);
-    },
+    onError: (err) => showError(`Failed to cancel: ${err.message}`),
   });
 
-  const handleCancel = (reason: string) => {
-    cancelMutation.mutate(reason);
-  };
-
   if (isStatusLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Real-time Status</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center space-x-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <p>Connecting to printer...</p>
-        </CardContent>
-      </Card>
-    );
+    return <Card><CardHeader><CardTitle>Real-time Status</CardTitle></CardHeader><CardContent className="flex items-center space-x-2"><Loader2 className="h-5 w-5 animate-spin" /><p>Connecting to printer...</p></CardContent></Card>;
   }
 
   if (isStatusError || !status) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Real-time Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-destructive">Connection Error</p>
-          <p className="text-muted-foreground text-sm mt-1">
-            Could not retrieve status from the printer. Check the connection URL in settings.
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return <Card><CardHeader><CardTitle>Real-time Status</CardTitle></CardHeader><CardContent><p className="text-destructive">Connection Error</p><p className="text-muted-foreground text-sm mt-1">Could not retrieve status. For local printers, check the connection URL. For cloud printers, ensure the agent is running.</p></CardContent></Card>;
   }
   
   const statusText = status.is_printing ? (status.is_paused ? `Paused (${status.progress}%)` : `Printing (${status.progress}%)`) : "Idle";
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Real-time Status</CardTitle>
-      </CardHeader>
+      <CardHeader><CardTitle>Real-time Status</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="font-medium">Status</p>
-            <p className="text-lg font-bold">{statusText}</p>
-          </div>
-          <div>
-            <p className="font-medium">File</p>
-            <p className="text-lg font-bold truncate">{status.file_name}</p>
-          </div>
+          <div><p className="font-medium">Status</p><p className="text-lg font-bold">{statusText}</p></div>
+          <div><p className="font-medium">File</p><p className="text-lg font-bold truncate">{status.file_name}</p></div>
         </div>
-
-        {status.is_printing && (
-          <div className="space-y-2">
-            <p className="font-medium">Progress</p>
-            <Progress value={status.progress} className="w-full" />
-            <p className="text-sm text-muted-foreground">{status.time_remaining} remaining</p>
-          </div>
-        )}
-
+        {status.is_printing && (<div className="space-y-2"><p className="font-medium">Progress</p><Progress value={status.progress} className="w-full" /><p className="text-sm text-muted-foreground">{status.time_remaining} remaining</p></div>)}
         <div className="grid grid-cols-2 gap-4 border-t pt-4">
-          <div>
-            <p className="font-medium">Nozzle Temp</p>
-            <p className="text-lg font-bold">{status.nozzle_temp}</p>
-          </div>
-          <div>
-            <p className="font-medium">Bed Temp</p>
-            <p className="text-lg font-bold">{status.bed_temp}</p>
-          </div>
+          <div><p className="font-medium">Nozzle Temp</p><p className="text-lg font-bold">{status.nozzle_temp}</p></div>
+          <div><p className="font-medium">Bed Temp</p><p className="text-lg font-bold">{status.bed_temp}</p></div>
         </div>
-
         {status.is_printing && (
           <div className="pt-4 border-t grid grid-cols-2 gap-4">
-            {status.is_paused ? (
-              <Button 
-                variant="outline"
-                onClick={() => resumeMutation.mutate()}
-                disabled={resumeMutation.isPending || cancelMutation.isPending}
-              >
-                {resumeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                Resume
-              </Button>
-            ) : (
-              <Button 
-                variant="outline"
-                onClick={() => pauseMutation.mutate()}
-                disabled={pauseMutation.isPending || cancelMutation.isPending}
-              >
-                {pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
-                Pause
-              </Button>
-            )}
-            <CancellationDialog
-              onConfirm={handleCancel}
-              title={`Cancel print on ${printerName}?`}
-              description="This will stop the current print job and move it to your history. Please provide a reason for the cancellation."
-              triggerButton={
-                <Button variant="destructive" disabled={pauseMutation.isPending || cancelMutation.isPending || resumeMutation.isPending}>
-                  {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
-                  Cancel
-                </Button>
-              }
-            />
+            {status.is_paused ? (<Button variant="outline" onClick={() => resumeMutation.mutate()} disabled={resumeMutation.isPending || cancelMutation.isPending}>{resumeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}Resume</Button>) : (<Button variant="outline" onClick={() => pauseMutation.mutate()} disabled={pauseMutation.isPending || cancelMutation.isPending}>{pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}Pause</Button>)}
+            <CancellationDialog onConfirm={(reason) => cancelMutation.mutate(reason)} title={`Cancel print on ${printer.name}?`} description="This will stop the current print job and move it to your history. Please provide a reason." triggerButton={<Button variant="destructive" disabled={pauseMutation.isPending || cancelMutation.isPending || resumeMutation.isPending}>{cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}Cancel</Button>} />
           </div>
         )}
       </CardContent>
     </Card>
   );
 };
-
 
 // --- Main Page Component ---
 
@@ -212,233 +125,93 @@ const PrinterDetails = () => {
     mutationFn: deletePrinter,
     onSuccess: () => {
       showSuccess(`Printer "${printer?.name}" successfully removed.`);
-      queryClient.invalidateQueries({ queryKey: ["printers"] }); // Invalidate dashboard list
+      queryClient.invalidateQueries({ queryKey: ["printers"] });
       navigate("/", { replace: true });
     },
-    onError: (err) => {
-      showError(err.message);
-    },
+    onError: (err) => showError(err.message),
   });
   
   const updateMutation = useMutation({
     mutationFn: updatePrinter,
     onSuccess: (data, variables) => {
       showSuccess(`Printer "${variables.name || printer?.name}" updated successfully.`);
-      queryClient.invalidateQueries({ queryKey: ["printerDetails", id] }); // Refetch details
-      queryClient.invalidateQueries({ queryKey: ["printers"] }); // Update dashboard list
+      queryClient.invalidateQueries({ queryKey: ["printerDetails", id] });
+      queryClient.invalidateQueries({ queryKey: ["printers"] });
     },
-    onError: (err) => {
-      showError(err.message);
-    },
+    onError: (err) => showError(err.message),
   });
   
   const testConnectionMutation = useMutation({
-    mutationFn: getPrinterStatus,
-    onSuccess: (status) => {
-      showSuccess(`Connection successful! Printer is currently ${status.is_printing ? 'printing' : 'idle'}.`);
-    },
-    onError: (err) => {
-      showError(`Connection failed: ${err.message}`);
-    },
+    mutationFn: (p: Printer) => getPrinterStatus(p),
+    onSuccess: (status) => showSuccess(`Connection successful! Printer is currently ${status.is_printing ? 'printing' : 'idle'}.`),
+    onError: (err) => showError(`Connection failed: ${err.message}`),
   });
   
   const emergencyStopMutation = useMutation({
-    mutationFn: (printerId: string) => sendPrinterCommand(printerId, "M112"), // M112 is Emergency Stop
+    mutationFn: (p: Printer) => sendPrinterCommand(p, "M112"),
     onSuccess: () => {
       showSuccess(`Emergency Stop command sent to ${printer?.name}.`);
       queryClient.invalidateQueries({ queryKey: ["printerStatus", id] });
     },
-    onError: (err) => {
-      showError(`Emergency Stop failed: ${err.message}`);
-    },
+    onError: (err) => showError(`Emergency Stop failed: ${err.message}`),
   });
-  
-  const handleUpdate = (updates: Partial<Printer>) => {
-    updateMutation.mutate(updates);
-  };
-  
-  const handleDelete = () => {
-    if (id) {
-      deleteMutation.mutate(id);
-    }
-  };
-  
-  const handleTestConnection = () => {
-    if (id) {
-      testConnectionMutation.mutate(id);
-    }
-  };
-  
-  const handleEmergencyStop = () => {
-    if (id) {
-      emergencyStopMutation.mutate(id);
-    }
-  };
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-1/3" />
-        <div className="grid grid-cols-5 gap-4">
-          <Skeleton className="h-10" />
-          <Skeleton className="h-10" />
-          <Skeleton className="h-10" />
-          <Skeleton className="h-10" />
-          <Skeleton className="h-10" />
-        </div>
-        <Skeleton className="h-[500px] w-full" />
-      </div>
-    );
+    return <div className="space-y-6"><Skeleton className="h-10 w-1/3" /><div className="grid grid-cols-5 gap-4"><Skeleton className="h-10" /><Skeleton className="h-10" /><Skeleton className="h-10" /><Skeleton className="h-10" /><Skeleton className="h-10" /></div><Skeleton className="h-[500px] w-full" /></div>;
   }
 
   if (isError) {
     showError(`Error loading printer: ${error.message}`);
-    return (
-      <div className="text-center p-8">
-        <h2 className="text-xl font-semibold text-destructive">Error</h2>
-        <p className="text-muted-foreground">Could not load printer details.</p>
-        <Button onClick={() => navigate("/")} className="mt-4">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-        </Button>
-      </div>
-    );
+    return <div className="text-center p-8"><h2 className="text-xl font-semibold text-destructive">Error</h2><p className="text-muted-foreground">Could not load printer details.</p><Button onClick={() => navigate("/")} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Button></div>;
   }
 
   if (!printer) {
-    return (
-      <div className="text-center p-8">
-        <h2 className="text-xl font-semibold">Printer Not Found</h2>
-        <p className="text-muted-foreground">The requested printer does not exist.</p>
-        <Button onClick={() => navigate("/")} className="mt-4">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-        </Button>
-      </div>
-    );
+    return <div className="text-center p-8"><h2 className="text-xl font-semibold">Printer Not Found</h2><p className="text-muted-foreground">The requested printer does not exist.</p><Button onClick={() => navigate("/")} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Button></div>;
   }
+
+  const isCloudPrinter = printer.connection_type === 'cloud_agent';
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold flex items-center">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="mr-2">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          {printer.name}
-        </h1>
-        <DeleteConfirmationDialog
-          onConfirm={handleEmergencyStop}
-          title={`Confirm Emergency Stop for ${printer.name}`}
-          description="This will immediately halt all printer operations by sending the M112 command. Use only in emergencies."
-          triggerButton={
-            <Button variant="destructive" disabled={emergencyStopMutation.isPending}>
-              {emergencyStopMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Zap className="mr-2 h-4 w-4" />
-              )}
-              Emergency Stop
-            </Button>
-          }
-        />
+        <h1 className="text-3xl font-bold flex items-center"><Button variant="ghost" size="icon" onClick={() => navigate("/")} className="mr-2"><ArrowLeft className="h-5 w-5" /></Button>{printer.name}</h1>
+        <DeleteConfirmationDialog onConfirm={() => emergencyStopMutation.mutate(printer)} title={`Confirm Emergency Stop for ${printer.name}`} description="This will immediately halt all printer operations. Use only in emergencies." triggerButton={<Button variant="destructive" disabled={emergencyStopMutation.isPending}>{emergencyStopMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}Emergency Stop</Button>} />
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-5 md:w-auto">
-          <TabsTrigger value="overview" className="flex items-center">
-            <LayoutDashboard className="h-4 w-4 mr-2" /> Overview
-          </TabsTrigger>
-          <TabsTrigger value="control" className="flex items-center">
-            <Send className="h-4 w-4 mr-2" /> Control
-          </TabsTrigger>
-          <TabsTrigger value="files" className="flex items-center">
-            <FileText className="h-4 w-4 mr-2" /> Files
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center">
-            <History className="h-4 w-4 mr-2" /> History
-          </TabsTrigger>
-          <TabsTrigger value="webcam" className="flex items-center">
-            <Camera className="h-4 w-4 mr-2" /> Webcam
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center">
-            <Settings className="h-4 w-4 mr-2" /> Settings
-          </TabsTrigger>
+          <TabsTrigger value="overview"><LayoutDashboard className="h-4 w-4 mr-2" /> Overview</TabsTrigger>
+          <TabsTrigger value="control"><Send className="h-4 w-4 mr-2" /> Control</TabsTrigger>
+          <TabsTrigger value="files"><FileText className="h-4 w-4 mr-2" /> Files</TabsTrigger>
+          <TabsTrigger value="history"><History className="h-4 w-4 mr-2" /> History</TabsTrigger>
+          <TabsTrigger value="webcam"><Camera className="h-4 w-4 mr-2" /> Webcam</TabsTrigger>
+          <TabsTrigger value="settings">{isCloudPrinter ? <Cloud className="h-4 w-4 mr-2" /> : <Settings className="h-4 w-4 mr-2" />} Settings</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="overview" className="mt-6">
-          <PrinterOverviewTab printerId={printer.id} printerName={printer.name} />
-        </TabsContent>
-        
-        <TabsContent value="control" className="mt-6">
-          <PrinterControlPanel printer={printer} />
-        </TabsContent>
-        
-        <TabsContent value="files" className="mt-6">
-          <PrinterFileManagementPanel printer={printer} />
-        </TabsContent>
-        
-        <TabsContent value="history" className="mt-6">
-          <PrintJobHistoryPanel printer={printer} />
-        </TabsContent>
-        
-        <TabsContent value="webcam" className="mt-6">
-          <PrinterWebcamPanel printer={printer} />
-        </TabsContent>
-        
+        <TabsContent value="overview" className="mt-6"><PrinterOverviewTab printer={printer} /></TabsContent>
+        <TabsContent value="control" className="mt-6"><PrinterControlPanel printer={printer} /></TabsContent>
+        <TabsContent value="files" className="mt-6"><PrinterFileManagementPanel printer={printer} /></TabsContent>
+        <TabsContent value="history" className="mt-6"><PrintJobHistoryPanel printer={printer} /></TabsContent>
+        <TabsContent value="webcam" className="mt-6"><PrinterWebcamPanel printer={printer} /></TabsContent>
         <TabsContent value="settings" className="mt-6 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Printer Configuration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PrinterEditForm 
-                printer={printer} 
-                onSubmit={handleUpdate} 
-                isSubmitting={updateMutation.isPending} 
-              />
-              
-              <div className="mt-6 pt-6 border-t">
-                <h3 className="text-lg font-semibold mb-2">Connection Test</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Verify that the application can successfully communicate with your printer using the current settings.
-                </p>
-                <Button 
-                  onClick={handleTestConnection} 
-                  disabled={testConnectionMutation.isPending}
-                >
-                  {testConnectionMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                  )}
-                  Test Connection
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
+          {isCloudPrinter ? <CloudPrinterSetup printer={printer} /> : (
+            <Card>
+              <CardHeader><CardTitle>Printer Configuration</CardTitle></CardHeader>
+              <CardContent>
+                <PrinterEditForm printer={printer} onSubmit={(updates) => updateMutation.mutate(updates)} isSubmitting={updateMutation.isPending} />
+                <div className="mt-6 pt-6 border-t">
+                  <h3 className="text-lg font-semibold mb-2">Connection Test</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Verify communication with your printer.</p>
+                  <Button onClick={() => testConnectionMutation.mutate(printer)} disabled={testConnectionMutation.isPending}>{testConnectionMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}Test Connection</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card className="border-destructive">
-            <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-destructive">Danger Zone</CardTitle></CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Permanently remove this printer from your farm. This action cannot be undone.
-              </p>
-              <DeleteConfirmationDialog
-                onConfirm={handleDelete}
-                title={`Are you absolutely sure?`}
-                description={`This action will permanently delete the printer "${printer.name}" and all associated data. This cannot be undone.`}
-                triggerButton={
-                  <Button variant="destructive" disabled={deleteMutation.isPending}>
-                    {deleteMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="mr-2 h-4 w-4" />
-                    )}
-                    Delete Printer
-                  </Button>
-                }
-              />
+              <p className="text-sm text-muted-foreground mb-4">Permanently remove this printer from your farm.</p>
+              <DeleteConfirmationDialog onConfirm={() => deleteMutation.mutate(printer.id)} title={`Are you absolutely sure?`} description={`This will permanently delete "${printer.name}". This cannot be undone.`} triggerButton={<Button variant="destructive" disabled={deleteMutation.isPending}>{deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}Delete Printer</Button>} />
             </CardContent>
           </Card>
         </TabsContent>

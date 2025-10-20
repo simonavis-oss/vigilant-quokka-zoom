@@ -26,7 +26,7 @@ const PrinterFileManagementPanel: React.FC<{ printer: Printer }> = ({ printer })
 
   const { data: files, isLoading, isError, error } = useQuery<PrinterFile[]>({
     queryKey: ["printerFiles", printer.id],
-    queryFn: () => listPrinterFiles(printer.id),
+    queryFn: () => listPrinterFiles(printer),
   });
 
   const addMutation = useMutation({
