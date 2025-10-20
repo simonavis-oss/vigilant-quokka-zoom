@@ -14,7 +14,8 @@ import { Progress } from "@/components/ui/progress";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import { deletePrinter, updatePrinter } from "@/integrations/supabase/mutations";
 import PrinterEditForm from "@/components/printer/PrinterEditForm";
-import PrinterControlPanel from "@/components/printer/PrinterControlPanel"; // Import the new component
+import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
+import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel"; // Import the new component
 
 // --- Data Fetching ---
 
@@ -258,16 +259,7 @@ const PrinterDetails = () => {
         </TabsContent>
         
         <TabsContent value="webcam" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Webcam Streaming (Mock)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                This area will host the live webcam stream(s), snapshots, and timelapse controls.
-              </p>
-            </CardContent>
-          </Card>
+          <PrinterWebcamPanel printer={printer} />
         </TabsContent>
         
         <TabsContent value="settings" className="mt-6 space-y-6">
