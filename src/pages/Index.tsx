@@ -14,6 +14,7 @@ import { useFarmStatus } from "@/hooks/use-farm-status";
 import { useTotalPrintTime } from "@/hooks/use-total-print-time";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const fetchPrinters = async (userId: string): Promise<Printer[]> => {
   const { data, error } = await supabase
@@ -31,6 +32,7 @@ type ConnectionTypeFilter = Printer['connection_type'] | 'all';
 
 const Index = () => {
   const { user } = useSession();
+  const navigate = useNavigate(); // Initialize navigate
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<ConnectionTypeFilter>('all');
@@ -62,6 +64,20 @@ const Index = () => {
   const printerCount = totalPrinters;
   const isLoading = isPrintersLoading || isStatusLoading || isTimeLoading;
 
+  // Function to handle card clicks (for future filtering/navigation)
+  const handleCardClick = (target: 'all' | 'online' | 'active') => {
+    if (target === 'online') {
+      // For now, just set the filter to a known type or refresh
+      // In a real app, this would set a global filter state or navigate to a filtered view.
+      setFilterType('all'); 
+    } else if (target === 'active') {
+      // Same as above
+      setFilterType('all');
+    }
+    // For now, clicking any card just ensures we are on the main page
+    navigate('/');
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -88,7 +104,11 @@ const Index = () => {
       </p>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        {/* Total Printers Card */}
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow" 
+          onClick={() => handleCardClick('all')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total Printers
@@ -103,7 +123,12 @@ const Index = () => {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Printers Online Card */}
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow" 
+          onClick={() => handleCardClick('online')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Printers Online
@@ -118,7 +143,12 @@ const Index = () => {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Active Prints Card */}
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow" 
+          onClick={() => handleCardClick('active')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Active Prints
@@ -133,6 +163,8 @@ const Index = () => {
             </p>
           </CardContent>
         </Card>
+        
+        {/* Total Print Time Card (Static for now as it doesn't lead to a list) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
