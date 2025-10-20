@@ -9,14 +9,14 @@ import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPrinterStatus, PrinterStatus } from "@/integrations/supabase/functions";
+import { getPrinterStatus, PrinterStatus, sendPrinterCommand } from "@/integrations/supabase/functions";
 import { Progress } from "@/components/ui/progress";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import { deletePrinter, updatePrinter } from "@/integrations/supabase/mutations";
 import PrinterEditForm from "@/components/printer/PrinterEditForm";
 import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
 import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
-import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel"; // Import new component
+import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel";
 
 // --- Data Fetching ---
 
@@ -165,6 +165,17 @@ const PrinterDetails = () => {
     },
   });
   
+  const emergencyStopMutation = useMutation({
+    mutationFn: (printerId: string) => sendPrinterCommand(printerId, "M112"), // M112 is Emergency Stop
+    onSuccess: () => {
+      showSuccess(`Emergency Stop command sent to ${printer?.name}.`);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", id] });
+    },
+    onError: (err) => {
+      showError(`Emergency Stop failed: ${err.message}`);
+    },
+  });
+  
   const handleUpdate = (updates: Partial<Printer>) => {
     updateMutation.mutate(updates);
   };
@@ -178,6 +189,12 @@ const PrinterDetails = () => {
   const handleTestConnection = () => {
     if (id) {
       testConnectionMutation.mutate(id);
+    }
+  };
+  
+  const handleEmergencyStop = () => {
+    if (id) {
+      emergencyStopMutation.mutate(id);
     }
   };
 
@@ -231,9 +248,21 @@ const PrinterDetails = () => {
           </Button>
           {printer.name}
         </h1>
-        <Button variant="destructive">
-          <Zap className="mr-2 h-4 w-4" /> Emergency Stop
-        </Button>
+        <DeleteConfirmationDialog
+          onConfirm={handleEmergencyStop}
+          title={`Confirm Emergency Stop for ${printer.name}`}
+          description="This will immediately halt all printer operations by sending the M112 command. Use only in emergencies."
+          triggerButton={
+            <Button variant="destructive" disabled={emergencyStopMutation.isPending}>
+              {emergencyStopMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="mr-2 h-4 w-4" />
+              )}
+              Emergency Stop
+            </Button>
+          }
+        />
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
