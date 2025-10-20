@@ -11,6 +11,7 @@ import {
   fetchAllPrintJobsForUser,
 } from "@/integrations/supabase/queries";
 import DashboardAnalytics from "@/components/dashboard/DashboardAnalytics";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const { user } = useSession();
@@ -52,59 +53,65 @@ const Index = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Printers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isPrintersLoading ? (
-                <Skeleton className="h-8 w-12" />
-              ) : (
-                totalPrinters
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {totalPrinters === 0
-                ? "No printers registered."
-                : `${onlineCount} online.`}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Printers Online
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Skeleton className="h-8 w-12" /> : onlineCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {totalPrinters > 0
-                ? `${totalPrinters - onlineCount} offline.`
-                : "Ready to connect."}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Prints</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Skeleton className="h-8 w-12" /> : activePrints}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {activePrints > 0
-                ? `${activePrints} prints running.`
-                : "Ready to start printing."}
-            </p>
-          </CardContent>
-        </Card>
+        <Link to="/printers">
+          <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Printers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {isPrintersLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  totalPrinters
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {totalPrinters === 0
+                  ? "No printers registered."
+                  : `${onlineCount} online.`}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/printers">
+          <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Printers Online
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {isLoading ? <Skeleton className="h-8 w-12" /> : onlineCount}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {totalPrinters > 0
+                  ? `${totalPrinters - onlineCount} offline.`
+                  : "Ready to connect."}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/queue">
+          <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Prints</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {isLoading ? <Skeleton className="h-8 w-12" /> : activePrints}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {activePrints > 0
+                  ? `${activePrints} prints running.`
+                  : "Ready to start printing."}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
