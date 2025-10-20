@@ -41,6 +41,11 @@ export interface CompletionResponse {
   startedJobName?: string | null;
 }
 
+export interface BulkAssignmentResponse {
+  status: "success" | "error";
+  message: string;
+}
+
 export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus> => {
   const { data, error } = await supabase.functions.invoke("printer-status", {
     body: { id: printerId },
@@ -162,4 +167,21 @@ export const cancelActivePrint = async (printerId: string, reason: string): Prom
   }
 
   return data as CancelResponse;
+};
+
+export const bulkAssignPrintJobs = async (jobIds: string[], printerId: string): Promise<BulkAssignmentResponse> => {
+  const { data, error } = await supabase.functions.invoke("bulk-assign-jobs", {
+    body: { job_ids: jobIds, printer_id: printerId },
+  });
+
+  if (error) {
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
+  }
+  
+  if (data.status === "error") {
+    throw new Error(data.message);
+  }
+
+  return data as BulkAssignmentResponse;
 };

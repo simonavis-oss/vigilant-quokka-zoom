@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "@/context/SessionContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import QueueItemActions from "@/components/queue/QueueItemActions";
 import AddJobToQueueDialog from "@/components/queue/AddJobToQueueDialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import BulkAssignActions from "@/components/queue/BulkAssignActions";
 
 const getStatusBadge = (status: PrintQueueItem['status']) => {
   switch (status) {
@@ -29,6 +31,7 @@ const getStatusBadge = (status: PrintQueueItem['status']) => {
 
 const PrintQueuePage: React.FC = () => {
   const { user } = useSession();
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   
   const { data: queue, isLoading, isError } = useQuery<PrintQueueItem[]>({
     queryKey: ["printQueue", user?.id],
@@ -36,6 +39,31 @@ const PrintQueuePage: React.FC = () => {
     enabled: !!user?.id,
     refetchInterval: 15000,
   });
+
+  const pendingJobs = useMemo(() => queue?.filter(job => job.status === 'pending') || [], [queue]);
+  const activeJobs = useMemo(() => queue?.filter(job => job.status === 'assigned' || job.status === 'printing') || [], [queue]);
+
+  // --- Selection Logic ---
+  const handleSelectJob = (jobId: string, isSelected: boolean) => {
+    setSelectedJobIds(prev => 
+      isSelected ? [...prev, jobId] : prev.filter(id => id !== jobId)
+    );
+  };
+
+  const handleSelectAll = (isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedJobIds(pendingJobs.map(job => job.id));
+    } else {
+      setSelectedJobIds([]);
+    }
+  };
+
+  const isAllSelected = pendingJobs.length > 0 && selectedJobIds.length === pendingJobs.length;
+
+  // Reset selection if queue data changes (e.g., after assignment)
+  React.useEffect(() => {
+    setSelectedJobIds([]);
+  }, [queue]);
 
   if (isLoading) {
     return (
@@ -54,9 +82,6 @@ const PrintQueuePage: React.FC = () => {
       </div>
     );
   }
-  
-  const pendingJobs = queue.filter(job => job.status === 'pending');
-  const activeJobs = queue.filter(job => job.status === 'assigned' || job.status === 'printing');
 
   return (
     <div className="space-y-6">
@@ -101,7 +126,13 @@ const PrintQueuePage: React.FC = () => {
 
       <Card>
         <CardHeader><CardTitle>Pending Jobs ({pendingJobs.length})</CardTitle></CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {selectedJobIds.length > 0 && (
+            <BulkAssignActions 
+              selectedJobIds={selectedJobIds}
+              onClearSelection={() => setSelectedJobIds([])}
+            />
+          )}
           {pendingJobs.length === 0 ? (
             <p className="text-muted-foreground">The pending queue is empty.</p>
           ) : (
@@ -109,6 +140,13 @@ const PrintQueuePage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                        aria-label="Select all pending jobs"
+                      />
+                    </TableHead>
                     <TableHead>File Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Priority</TableHead>
@@ -118,7 +156,14 @@ const PrintQueuePage: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {pendingJobs.map((job) => (
-                    <TableRow key={job.id}>
+                    <TableRow key={job.id} data-state={selectedJobIds.includes(job.id) ? "selected" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedJobIds.includes(job.id)}
+                          onCheckedChange={(checked) => handleSelectJob(job.id, Boolean(checked))}
+                          aria-label={`Select job ${job.file_name}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium truncate max-w-[150px] md:max-w-none">{job.file_name}</TableCell>
                       <TableCell>{getStatusBadge(job.status)}</TableCell>
                       <TableCell>{job.priority}</TableCell>
