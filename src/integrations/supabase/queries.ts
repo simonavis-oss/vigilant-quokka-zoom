@@ -58,9 +58,10 @@ export const fetchPrintJobs = async (printerId: string): Promise<PrintJob[]> => 
 };
 
 const mockPrintQueue: PrintQueueItem[] = [
+  { id: "c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14", user_id: "mock-user-id", file_name: "Benchy_v2.gcode", status: 'printing', priority: 20, printer_id: "some-other-printer-id", created_at: new Date(Date.now() - 14400000).toISOString(), assigned_at: new Date(Date.now() - 3600000).toISOString(), printers: { name: "Mock Printer 2" } },
+  { id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13", user_id: "mock-user-id", file_name: "Assigned_Job_B.gcode", status: 'assigned', priority: 1, printer_id: "some-printer-id", created_at: new Date(Date.now() - 10800000).toISOString(), assigned_at: new Date(Date.now() - 1800000).toISOString(), printers: { name: "Mock Printer 1" } },
   { id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11", user_id: "mock-user-id", file_name: "New_Part_A.gcode", status: 'pending', priority: 10, printer_id: null, created_at: new Date(Date.now() - 3600000).toISOString(), assigned_at: null, printers: null },
   { id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12", user_id: "mock-user-id", file_name: "Large_Support_Structure.gcode", status: 'pending', priority: 5, printer_id: null, created_at: new Date(Date.now() - 7200000).toISOString(), assigned_at: null, printers: null },
-  { id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13", user_id: "mock-user-id", file_name: "Assigned_Job_B.gcode", status: 'assigned', priority: 1, printer_id: "some-printer-id", created_at: new Date(Date.now() - 10800000).toISOString(), assigned_at: new Date(Date.now() - 1800000).toISOString(), printers: { name: "Mock Printer 1" } },
 ];
 
 export const fetchPrintQueue = async (userId: string): Promise<PrintQueueItem[]> => {
