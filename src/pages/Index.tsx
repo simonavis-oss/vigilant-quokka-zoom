@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import PrinterCard from "@/components/printer/PrinterCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useFarmStatus } from "@/hooks/use-farm-status";
 
 const fetchPrinters = async (userId: string): Promise<Printer[]> => {
   const { data, error } = await supabase
@@ -27,19 +28,21 @@ const Index = () => {
   const { user } = useSession();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   
-  const { data: printers, isLoading, refetch } = useQuery<Printer[]>({
+  const { data: printers, isLoading: isPrintersLoading, refetch } = useQuery<Printer[]>({
     queryKey: ["printers", user?.id],
     queryFn: () => fetchPrinters(user!.id),
     enabled: !!user?.id,
   });
+  
+  const { totalPrinters, onlineCount, isLoading: isStatusLoading } = useFarmStatus(printers);
   
   const handlePrinterAdded = () => {
     setIsWizardOpen(false);
     refetch(); // Refetch the list after a new printer is added
   };
 
-  const printerCount = printers?.length || 0;
-  const onlineCount = printers?.filter(p => p.is_online).length || 0;
+  const printerCount = totalPrinters;
+  const isLoading = isPrintersLoading || isStatusLoading;
 
   return (
     <div className="space-y-8">
@@ -74,7 +77,9 @@ const Index = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{printerCount}</div>
+            <div className="text-2xl font-bold">
+              {isPrintersLoading ? <Skeleton className="h-8 w-12" /> : printerCount}
+            </div>
             <p className="text-xs text-muted-foreground">
               {printerCount === 0 ? "No printers registered." : `${onlineCount} online.`}
             </p>
@@ -87,7 +92,9 @@ const Index = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{onlineCount}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Skeleton className="h-8 w-12" /> : onlineCount}
+            </div>
             <p className="text-xs text-muted-foreground">
               {printerCount > 0 ? `${printerCount - onlineCount} offline.` : "Ready to connect."}
             </p>
@@ -108,7 +115,7 @@ const Index = () => {
         </Card>
       </div>
       
-      {isLoading ? (
+      {isPrintersLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Skeleton className="h-[250px]" />
           <Skeleton className="h-[250px]" />
