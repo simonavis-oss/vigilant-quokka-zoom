@@ -42,7 +42,7 @@ const validateUrlOrIp = (val: string) => {
 
 const PrinterSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "octoprint", "klipper_go", "cloud_agent"], {
+  connection_type: z.enum(["moonraker", "octoprint", "cloud_agent"], {
     required_error: "Please select a connection type.",
   }),
   base_url: z.string().optional(),
@@ -163,7 +163,6 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                       <SelectItem value="moonraker">Local Network (Moonraker)</SelectItem>
                       <SelectItem value="octoprint">Local Network (OctoPrint)</SelectItem>
                       <SelectItem value="cloud_agent"><div className="flex items-center">Cloud Agent (via Obico-like service)<Cloud className="ml-2 h-4 w-4 text-blue-500"/></div></SelectItem>
-                      <SelectItem value="klipper_go" disabled>Klipper Go (Coming Soon)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -26,7 +26,7 @@ import { Loader2 } from "lucide-react";
 
 const PrinterEditSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "octoprint", "klipper_go"], {
+  connection_type: z.enum(["moonraker", "octoprint", "cloud_agent"], {
     required_error: "Please select a connection type.",
   }),
   base_url: z.preprocess(
@@ -117,7 +117,6 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
                 <SelectContent>
                   <SelectItem value="moonraker">Moonraker / Mainsail / Fluid (Recommended)</SelectItem>
                   <SelectItem value="octoprint">Octoprint</SelectItem>
-                  <SelectItem value="klipper_go">Klipper Go / Marlin (Future Support)</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

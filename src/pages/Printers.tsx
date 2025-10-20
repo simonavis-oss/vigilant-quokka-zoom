@@ -117,7 +117,7 @@ const PrintersPage = () => {
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="moonraker">Moonraker</SelectItem>
                 <SelectItem value="octoprint">OctoPrint</SelectItem>
-                <SelectItem value="klipper_go">Klipper Go</SelectItem>
+                <SelectItem value="cloud_agent">Cloud Agent</SelectItem>
               </SelectContent>
             </Select>
           </div>
