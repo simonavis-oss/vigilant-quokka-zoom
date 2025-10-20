@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useSession } from "@/context/SessionContext";
 import { Navigate, Outlet, Link } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, User, Settings } from "lucide-react";
+import { LogOut, User, Settings, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,9 +14,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Sidebar from "@/components/Sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const MainLayout = () => {
   const { user, isLoading } = useSession();
+  const isMobile = useIsMobile();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   if (isLoading) {
     // Simple loading state while checking session
@@ -36,13 +41,48 @@ const MainLayout = () => {
     await supabase.auth.signOut();
   };
 
+  const renderSidebar = () => {
+    if (isMobile) {
+      return (
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="lg:hidden">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-64">
+            <div className="pt-10">
+              <Sidebar />
+            </div>
+          </SheetContent>
+        </Sheet>
+      );
+    }
+    
+    return (
+      <aside className="hidden lg:block w-64 border-r bg-sidebar/50">
+        <Sidebar />
+      </aside>
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <Link to="/" className="text-xl font-bold hover:opacity-80 transition-opacity">
-            3D Print Farm Manager
-          </Link>
+        <div className="container flex h-16 items-center justify-between lg:justify-end">
+          <div className="flex items-center lg:hidden">
+            {renderSidebar()}
+            <Link to="/" className="ml-4 text-xl font-bold hover:opacity-80 transition-opacity">
+              Farm Manager
+            </Link>
+          </div>
+          
+          <div className="hidden lg:block">
+            <Link to="/" className="text-xl font-bold hover:opacity-80 transition-opacity">
+              3D Print Farm Manager
+            </Link>
+          </div>
+
           <div className="flex items-center space-x-4">
             <ThemeToggle />
             
@@ -78,9 +118,19 @@ const MainLayout = () => {
           </div>
         </div>
       </header>
-      <main className="flex-grow container py-8">
-        <Outlet />
-      </main>
+      
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:block w-64 border-r bg-card/50">
+          <Sidebar />
+        </aside>
+        
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+          <Outlet />
+        </main>
+      </div>
+      
       <footer className="border-t">
         <MadeWithDyad />
       </footer>
