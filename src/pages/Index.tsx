@@ -5,19 +5,41 @@ import { PlusCircle } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import PrinterConnectionWizard from "@/components/printer/PrinterConnectionWizard";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Printer } from "@/types/printer";
+import PrinterCard from "@/components/printer/PrinterCard";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const fetchPrinters = async (userId: string): Promise<Printer[]> => {
+  const { data, error } = await supabase
+    .from("printers")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data as Printer[];
+};
 
 const Index = () => {
   const { user } = useSession();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   
-  // Placeholder for fetching printers (will be implemented next)
-  const [printers, setPrinters] = useState<any[]>([]); 
+  const { data: printers, isLoading, refetch } = useQuery<Printer[]>({
+    queryKey: ["printers", user?.id],
+    queryFn: () => fetchPrinters(user!.id),
+    enabled: !!user?.id,
+  });
   
   const handlePrinterAdded = () => {
     setIsWizardOpen(false);
-    // In a real scenario, we would refetch the printer list here.
-    // For now, we just close the dialog.
+    refetch(); // Refetch the list after a new printer is added
   };
+
+  const printerCount = printers?.length || 0;
+  const onlineCount = printers?.filter(p => p.is_online).length || 0;
 
   return (
     <div className="space-y-8">
@@ -41,10 +63,23 @@ const Index = () => {
       </div>
 
       <p className="text-muted-foreground">
-        This is your 3D Print Farm Dashboard. Start by adding a printer.
+        This is your 3D Print Farm Dashboard.
       </p>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Printers
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{printerCount}</div>
+            <p className="text-xs text-muted-foreground">
+              {printerCount === 0 ? "No printers registered." : `${onlineCount} online.`}
+            </p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -52,9 +87,9 @@ const Index = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{printers.length}</div>
+            <div className="text-2xl font-bold">{onlineCount}</div>
             <p className="text-xs text-muted-foreground">
-              {printers.length === 0 ? "No printers connected yet." : "Printers registered."}
+              {printerCount > 0 ? `${printerCount - onlineCount} offline.` : "Ready to connect."}
             </p>
           </CardContent>
         </Card>
@@ -73,18 +108,25 @@ const Index = () => {
         </Card>
       </div>
       
-      {printers.length === 0 && (
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-[250px]" />
+          <Skeleton className="h-[250px]" />
+          <Skeleton className="h-[250px]" />
+        </div>
+      ) : printerCount === 0 ? (
         <div className="p-8 border rounded-lg bg-card text-center">
           <h2 className="text-xl font-semibold mb-4">Get Started</h2>
           <p>Click "Add Printer" to connect your first 3D printer.</p>
         </div>
-      )}
-      
-      {/* Placeholder for Printer List */}
-      {printers.length > 0 && (
+      ) : (
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Your Printers</h2>
-          {/* Printer cards will go here */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {printers.map((printer) => (
+              <PrinterCard key={printer.id} printer={printer} />
+            ))}
+          </div>
         </div>
       )}
     </div>
