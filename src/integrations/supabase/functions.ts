@@ -53,7 +53,8 @@ export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus
   });
 
   if (error) {
-    throw new Error(`Edge Function Error: ${error.message}`);
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Error: ${error.message}`);
   }
   
   if (data.error) {
@@ -69,10 +70,8 @@ export const sendPrinterCommand = async (printerId: string, command: string): Pr
   });
 
   if (error) {
-    if (error.message.includes("non-2xx status code")) {
-      throw new Error(`Command failed. The printer API may be unreachable or the command was rejected.`);
-    }
-    throw new Error(`Edge Function Invocation Error: ${error.message}`);
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
   }
   
   if (data.status === "error") {
@@ -149,13 +148,13 @@ export const handlePrintCompletion = async (printerId: string): Promise<Completi
 };
 
 export const pausePrint = async (printerId: string): Promise<CommandResponse> => {
-  // M25 is the G-code for pausing an SD print.
-  return sendPrinterCommand(printerId, "M25");
+  // Klipper's specific command for pausing a print.
+  return sendPrinterCommand(printerId, "PAUSE");
 };
 
 export const resumePrint = async (printerId: string): Promise<CommandResponse> => {
-  // M24 is the G-code for resuming an SD print.
-  return sendPrinterCommand(printerId, "M24");
+  // Klipper's specific command for resuming a print.
+  return sendPrinterCommand(printerId, "RESUME");
 };
 
 export const cancelActivePrint = async (printerId: string, reason: string): Promise<CancelResponse> => {

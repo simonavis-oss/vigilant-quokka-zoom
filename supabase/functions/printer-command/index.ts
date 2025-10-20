@@ -11,106 +11,64 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // 1. Authentication Check (Client JWT required)
+  // --- Auth and Body Parsing ---
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   
-  // 2. Parse Request Body
-  let printerId: string;
-  let command: string;
+  let printerId: string, command: string;
   try {
     const body = await req.json();
     printerId = body.id;
     command = body.command;
-    
     if (!printerId || !command) {
-      return new Response(JSON.stringify({ error: "Missing printer ID or command" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Missing printer ID or command" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   } catch (e) {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // 3. Initialize Supabase Client (using service role key for secure access)
-  const supabaseServiceRole = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
-
-  // 4. Fetch Printer Details
-  const { data: printer, error: dbError } = await supabaseServiceRole
-    .from("printers")
-    .select("user_id, connection_type, base_url, api_key")
-    .eq("id", printerId)
-    .single();
-
+  // --- Supabase and Printer Fetching ---
+  const supabaseServiceRole = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const supabaseAnon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
+  
+  const { data: printer, error: dbError } = await supabaseServiceRole.from("printers").select("user_id, base_url, api_key").eq("id", printerId).single();
   if (dbError || !printer) {
-    console.error("DB Error:", dbError);
-    return new Response(JSON.stringify({ error: "Printer not found or database error" }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: "Printer not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   
-  // 5. Verify User Ownership (Security Check)
-  // Use the standard client to verify the token and get the user.
-  const supabaseAnon = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    {
-      global: {
-        headers: { Authorization: authHeader },
-      },
+  const { data: { user } } = await supabaseAnon.auth.getUser();
+  if (!user || user.id !== printer.user_id) {
+    return new Response(JSON.stringify({ error: "Unauthorized access" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // --- Live Moonraker API Call ---
+  try {
+    const encodedCommand = encodeURIComponent(command);
+    const moonrakerUrl = `${printer.base_url}/printer/gcode/script?gcode=${encodedCommand}`;
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (printer.api_key) {
+      headers["X-Api-Key"] = printer.api_key;
     }
-  );
-  
-  const { data: { user }, error: authError } = await supabaseAnon.auth.getUser();
 
-  if (authError || !user || user.id !== printer.user_id) {
-    return new Response(JSON.stringify({ error: "Unauthorized access or command attempt" }), {
-      status: 403,
+    const response = await fetch(moonrakerUrl, { method: "POST", headers });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Moonraker API returned status ${response.status}: ${errorBody}`);
+    }
+
+    return new Response(JSON.stringify({ status: "success", message: `Command executed: ${command}` }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
     });
-  }
 
-  // 6. Simulate External API Call (Replace with actual fetch logic later)
-  console.log(`Sending command to ${printer.connection_type} at ${printer.base_url}: ${command}`);
-  
-  // Simulate success/failure based on command complexity or random chance
-  const success = Math.random() > 0.1; 
-
-  if (!success) {
-    return new Response(JSON.stringify({ 
-      status: "error", 
-      message: `Failed to execute command: ${command}. Printer API unreachable. (Mock Error)` 
-    }), {
+  } catch (error) {
+    console.error(`Error sending command to printer ${printerId}:`, error.message);
+    return new Response(JSON.stringify({ status: "error", message: `Failed to execute command: ${error.message}` }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }
-
-  // 7. Return Success
-  return new Response(JSON.stringify({ 
-    status: "success", 
-    message: `Command executed successfully: ${command}`
-  }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-    status: 200,
-  });
 });

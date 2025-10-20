@@ -6,9 +6,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const mockStopPrint = (printer: any) => {
-  console.log(`[MOCK] Sending STOP command to ${printer.name}`);
-  return { success: true, message: "Stop command sent successfully." };
+// Real function to send a cancel command to Moonraker
+const stopPrint = async (printer: { base_url: string, api_key: string | null, name: string }) => {
+  try {
+    const moonrakerUrl = `${printer.base_url}/printer/print/cancel`;
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (printer.api_key) {
+      headers["X-Api-Key"] = printer.api_key;
+    }
+    const response = await fetch(moonrakerUrl, { method: "POST", headers });
+    if (!response.ok) {
+      throw new Error(`Moonraker API returned status ${response.status}`);
+    }
+    return { success: true, message: "Cancel command sent successfully." };
+  } catch (error) {
+    console.error(`Failed to send cancel command to ${printer.name}:`, error.message);
+    return { success: false, message: error.message };
+  }
 };
 
 serve(async (req) => {
@@ -16,13 +30,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // --- Auth, Body Parsing, and User Verification (Same as before) ---
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   
-  let printerId: string;
-  let reason: string;
+  let printerId: string, reason: string;
   try {
     const body = await req.json();
     printerId = body.printer_id;
@@ -34,37 +48,32 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  const supabaseServiceRole = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { autoRefreshToken: false, persistSession: false } });
+  const supabaseServiceRole = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const supabaseAnon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
   
-  const { data: { user }, error: authError } = await supabaseAnon.auth.getUser();
-  if (authError || !user) {
+  const { data: { user } } = await supabaseAnon.auth.getUser();
+  if (!user) {
     return new Response(JSON.stringify({ error: "Invalid user session" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   
-  // Find the job that is currently printing on this printer
-  const { data: job, error: jobError } = await supabaseServiceRole
-    .from("print_queue")
-    .select("*")
-    .eq("printer_id", printerId)
-    .eq("user_id", user.id)
-    .eq("status", "printing")
-    .single();
-
+  // --- Find Job and Printer ---
+  const { data: job, error: jobError } = await supabaseServiceRole.from("print_queue").select("*").eq("printer_id", printerId).eq("user_id", user.id).eq("status", "printing").single();
   if (jobError || !job) {
     return new Response(JSON.stringify({ error: "No active print job found to cancel for this printer." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  const { data: printer, error: printerError } = await supabaseServiceRole.from("printers").select("id, name").eq("id", job.printer_id).single();
+  const { data: printer, error: printerError } = await supabaseServiceRole.from("printers").select("id, name, base_url, api_key").eq("id", job.printer_id).single();
   if (printerError || !printer) {
     return new Response(JSON.stringify({ error: "Assigned printer not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   
-  const stopResult = mockStopPrint(printer);
+  // --- Send Real Cancel Command ---
+  const stopResult = await stopPrint(printer);
   if (!stopResult.success) {
-    return new Response(JSON.stringify({ error: `Failed to send stop command to ${printer.name}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: `Failed to send stop command to ${printer.name}: ${stopResult.message}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
+  // --- Update Database (Same as before) ---
   const now = new Date();
   const assignedAt = new Date(job.assigned_at);
   const durationSeconds = Math.round((now.getTime() - assignedAt.getTime()) / 1000);
@@ -83,7 +92,6 @@ serve(async (req) => {
   const { error: deleteError } = await supabaseServiceRole.from("print_queue").delete().eq("id", job.id);
   if (deleteError) {
     console.error("Failed to delete job from queue:", deleteError);
-    return new Response(JSON.stringify({ error: "Failed to remove job from queue after cancellation" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   return new Response(JSON.stringify({ status: "success", message: `Print job "${job.file_name}" has been cancelled.` }), {
