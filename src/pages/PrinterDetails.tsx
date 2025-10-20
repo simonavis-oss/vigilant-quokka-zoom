@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +17,7 @@ import PrinterEditForm from "@/components/printer/PrinterEditForm";
 import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
 import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
 import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel";
+import PrintJobHistoryPanel from "@/components/printer/PrintJobHistoryPanel"; // Import new component
 
 // --- Data Fetching ---
 
@@ -276,6 +277,9 @@ const PrinterDetails = () => {
           <TabsTrigger value="files" className="flex items-center">
             <FileText className="h-4 w-4 mr-2" /> Files
           </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center">
+            <History className="h-4 w-4 mr-2" /> History
+          </TabsTrigger>
           <TabsTrigger value="webcam" className="flex items-center">
             <Camera className="h-4 w-4 mr-2" /> Webcam
           </TabsTrigger>
@@ -294,6 +298,10 @@ const PrinterDetails = () => {
         
         <TabsContent value="files" className="mt-6">
           <PrinterFileManagementPanel printer={printer} />
+        </TabsContent>
+        
+        <TabsContent value="history" className="mt-6">
+          <PrintJobHistoryPanel printer={printer} />
         </TabsContent>
         
         <TabsContent value="webcam" className="mt-6">

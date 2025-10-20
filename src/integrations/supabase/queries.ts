@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { PrintJob } from "@/types/print-job";
 
 export interface Profile {
   id: string;
@@ -23,4 +24,17 @@ export const fetchProfile = async (userId: string): Promise<Profile> => {
     throw new Error("Profile not found.");
   }
   return data as Profile;
+};
+
+export const fetchPrintJobs = async (printerId: string): Promise<PrintJob[]> => {
+  const { data, error } = await supabase
+    .from("print_jobs")
+    .select("*")
+    .eq("printer_id", printerId)
+    .order("started_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data as PrintJob[];
 };
