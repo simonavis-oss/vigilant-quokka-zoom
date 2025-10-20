@@ -6,10 +6,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// --- Live Status Check Logic ---
+// This mock logic simulates checking if a printer is online and not busy.
+const checkIsPrinterAvailable = (printer: { name: string }): boolean => {
+  console.log(`[Assign-Job] Live checking printer: ${printer.name}`);
+  
+  // Mock connection success (90% chance)
+  const isConnectionSuccessful = Math.random() > 0.1;
+  if (!isConnectionSuccessful) {
+    console.log(`[Assign-Job] Connection failed for ${printer.name}`);
+    return false;
+  }
+
+  // Mock checking if it's currently printing (50% chance if connected)
+  const isPrinting = Math.random() > 0.5;
+  console.log(`[Assign-Job] ${printer.name} is_printing: ${isPrinting}`);
+  
+  // A printer is available if it's connected and not printing.
+  return !isPrinting;
+};
+// --- End Live Status Check ---
+
 // Mock function to simulate sending a print start command to a printer API
 const mockStartPrint = (printer: any, fileName: string) => {
   console.log(`[MOCK] Starting print of ${fileName} on ${printer.name} (${printer.connection_type})`);
-  // In a real scenario, this would involve an HTTP request to the printer's API
   return { success: true, message: "Print command sent successfully." };
 };
 
@@ -81,27 +101,34 @@ serve(async (req) => {
     });
   }
 
-  // 5. Find an Available Printer
-  // In a real scenario, we would query the printer-status edge function for all printers,
-  // but for simplicity and to avoid complex cross-function calls, we mock availability here.
-  // We assume any printer not currently marked as 'is_online: false' is potentially available.
-  
-  const { data: printers, error: printerError } = await supabaseServiceRole
+  // 5. Find an Available Printer by performing LIVE checks
+  const { data: allPrinters, error: printerError } = await supabaseServiceRole
     .from("printers")
     .select("id, name, connection_type, base_url, api_key")
-    .eq("user_id", user.id)
-    .eq("is_online", true) // Assuming 'is_online' is a rough indicator of availability
-    .limit(1);
+    .eq("user_id", user.id);
 
-  if (printerError || !printers || printers.length === 0) {
-    return new Response(JSON.stringify({ error: "No available printers found." }), {
+  if (printerError || !allPrinters || allPrinters.length === 0) {
+    return new Response(JSON.stringify({ error: "No printers are registered for this user." }), {
+      status: 404,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  let availablePrinter = null;
+  for (const printer of allPrinters) {
+    if (checkIsPrinterAvailable(printer)) {
+      availablePrinter = printer;
+      break; // Found an available printer, so we stop looking.
+    }
+  }
+
+  if (!availablePrinter) {
+    return new Response(JSON.stringify({ error: "No available printers found. All may be busy or offline." }), {
       status: 404,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
   
-  const availablePrinter = printers[0];
-
   // 6. Assign Job and Start Print (Mock)
   const printResult = mockStartPrint(availablePrinter, job.file_name);
 
@@ -118,8 +145,6 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("Failed to update queue status:", updateError);
-      // Note: If update fails, the print might still be running, but the queue state is wrong.
-      // For this mock, we proceed with success.
     }
     
     // 8. Return Success
