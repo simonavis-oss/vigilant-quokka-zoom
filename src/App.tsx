@@ -12,7 +12,8 @@ import MainLayout from "./layouts/MainLayout";
 import PrinterDetails from "./pages/PrinterDetails";
 import ProfilePage from "./pages/Profile";
 import PrintQueuePage from "./pages/PrintQueue";
-import PrintersPage from "./pages/Printers"; // Import PrintersPage
+import PrintersPage from "./pages/Printers";
+import FailureAlertsPage from "./pages/FailureAlertsPage"; // Import new page
 
 const queryClient = new QueryClient();
 
@@ -30,11 +31,11 @@ const App = () => (
               {/* Protected Routes wrapped in MainLayout */}
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Index />} />
-                <Route path="/printers" element={<PrintersPage />} />{" "}
-                {/* Add Printers Route */}
+                <Route path="/printers" element={<PrintersPage />} />
                 <Route path="/printers/:id" element={<PrinterDetails />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/queue" element={<PrintQueuePage />} />
+                <Route path="/alerts" element={<FailureAlertsPage />} /> {/* New Route */}
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               </Route>
 

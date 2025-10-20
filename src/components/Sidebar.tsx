@@ -6,6 +6,7 @@ import {
   Printer,
   User,
   ListOrdered,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,11 @@ const navItems = [
     title: "Print Queue",
     href: "/queue",
     icon: ListOrdered,
+  },
+  {
+    title: "Failure Alerts",
+    href: "/alerts",
+    icon: AlertTriangle,
   },
   {
     title: "Profile",

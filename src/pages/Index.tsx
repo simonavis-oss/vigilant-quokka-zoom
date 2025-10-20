@@ -9,12 +9,20 @@ import { useTotalPrintTime } from "@/hooks/use-total-print-time";
 import {
   fetchPrinters,
   fetchAllPrintJobsForUser,
+  fetchProfile,
+  Profile,
 } from "@/integrations/supabase/queries";
 import DashboardAnalytics from "@/components/dashboard/DashboardAnalytics";
 import { Link } from "react-router-dom";
 
 const Index = () => {
   const { user } = useSession();
+
+  const { data: profile } = useQuery<Profile>({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(user!.id),
+    enabled: !!user?.id,
+  });
 
   const { data: printers, isLoading: isPrintersLoading } = useQuery<Printer[]>(
     {
@@ -42,6 +50,8 @@ const Index = () => {
 
   const isLoading =
     isPrintersLoading || isStatusLoading || isTimeLoading || isJobsLoading;
+  
+  const showAnalytics = profile?.enable_advanced_metrics ?? true; // Default to true if profile is loading/missing
 
   return (
     <div className="space-y-8">
@@ -138,13 +148,20 @@ const Index = () => {
           <Skeleton className="h-[350px]" />
           <Skeleton className="h-[350px]" />
         </div>
-      ) : allPrintJobs && allPrintJobs.length > 0 ? (
+      ) : showAnalytics && allPrintJobs && allPrintJobs.length > 0 ? (
         <DashboardAnalytics jobs={allPrintJobs} printers={printers} />
-      ) : (
+      ) : showAnalytics && allPrintJobs && allPrintJobs.length === 0 ? (
         <div className="p-8 border rounded-lg bg-card text-center">
           <h2 className="text-xl font-semibold mb-4">No Print Data Yet</h2>
           <p className="text-muted-foreground">
             Once you complete some prints, analytics will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="p-8 border rounded-lg bg-card text-center">
+          <h2 className="text-xl font-semibold mb-4">Advanced Metrics Disabled</h2>
+          <p className="text-muted-foreground">
+            Enable advanced dashboard metrics in your <Link to="/profile" className="text-primary underline">Profile Settings</Link> to view charts.
           </p>
         </div>
       )}

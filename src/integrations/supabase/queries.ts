@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrintJob } from "@/types/print-job";
 import { PrintQueueItem } from "@/types/print-queue";
 import { Printer } from "@/types/printer";
+import { MaintenanceLog } from "@/types/maintenance"; // Import new type
 
 export interface Profile {
   id: string;
@@ -10,6 +11,18 @@ export interface Profile {
   avatar_url: string | null;
   updated_at: string | null;
   enable_advanced_metrics: boolean;
+}
+
+export interface FailureAlert {
+  id: string;
+  user_id: string;
+  printer_id: string;
+  screenshot_url: string | null;
+  status: 'detected' | 'ignored' | 'resolved';
+  created_at: string;
+  printers: {
+    name: string;
+  } | null;
 }
 
 export const fetchPrinters = async (userId: string): Promise<Printer[]> => {
@@ -111,4 +124,36 @@ export const fetchTotalPrintTime = async (userId: string): Promise<number> => {
 
   const totalSeconds = data.reduce((sum, job) => sum + (job.duration_seconds || 0), 0);
   return totalSeconds;
+};
+
+export const fetchFailureAlerts = async (userId: string): Promise<FailureAlert[]> => {
+  const { data, error } = await supabase
+    .from("failure_alerts")
+    .select(`*, printers ( name )`)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return [];
+    }
+    throw new Error(error.message);
+  }
+  return data as FailureAlert[];
+};
+
+export const fetchMaintenanceLogs = async (printerId: string): Promise<MaintenanceLog[]> => {
+  const { data, error } = await supabase
+    .from("maintenance_log")
+    .select("*")
+    .eq("printer_id", printerId)
+    .order("maintenance_date", { ascending: false });
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return [];
+    }
+    throw new Error(error.message);
+  }
+  return data as MaintenanceLog[];
 };

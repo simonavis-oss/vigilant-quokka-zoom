@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { Profile } from "./queries"; // Import Profile type
+import { MaintenanceLog } from "@/types/maintenance";
 
 export const deletePrinter = async (printerId: string): Promise<void> => {
   const { error } = await supabase
@@ -56,4 +57,25 @@ export const updateFailureAlertStatus = async ({ alertId, status }: { alertId: s
   if (error) {
     throw new Error(`Failed to update alert status: ${error.message}`);
   }
+};
+
+interface NewMaintenanceLog {
+  printer_id: string;
+  user_id: string;
+  task_description: string;
+  notes: string | null;
+  maintenance_date: string;
+}
+
+export const insertMaintenanceLog = async (log: NewMaintenanceLog): Promise<MaintenanceLog> => {
+  const { data, error } = await supabase
+    .from("maintenance_log")
+    .insert(log)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to insert maintenance log: ${error.message}`);
+  }
+  return data as MaintenanceLog;
 };

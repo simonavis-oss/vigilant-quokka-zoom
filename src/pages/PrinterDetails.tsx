@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle, Play, Cloud } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle, Play, Cloud, Wrench } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +20,7 @@ import PrinterFileManagementPanel from "@/components/printer/PrinterFileManageme
 import PrintJobHistoryPanel from "@/components/printer/PrintJobHistoryPanel";
 import CancellationDialog from "@/components/CancellationDialog";
 import CloudPrinterSetup from "@/components/printer/CloudPrinterSetup";
+import MaintenanceLogPanel from "@/components/printer/MaintenanceLogPanel"; // Import new component
 
 // --- Data Fetching ---
 
@@ -174,16 +175,17 @@ const PrinterDetails = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold flex items-center"><Button variant="ghost" size="icon" onClick={() => navigate("/")} className="mr-2"><ArrowLeft className="h-5 w-5" /></Button>{printer.name}</h1>
+        <h1 className="text-3xl font-bold flex items-center"><Button variant="ghost" size="icon" onClick={() => navigate("/printers")} className="mr-2"><ArrowLeft className="h-5 w-5" /></Button>{printer.name}</h1>
         <DeleteConfirmationDialog onConfirm={() => emergencyStopMutation.mutate(printer)} title={`Confirm Emergency Stop for ${printer.name}`} description="This will immediately halt all printer operations. Use only in emergencies." triggerButton={<Button variant="destructive" disabled={emergencyStopMutation.isPending}>{emergencyStopMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}Emergency Stop</Button>} />
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 md:w-auto">
+        <TabsList className="grid w-full grid-cols-6 md:w-auto">
           <TabsTrigger value="overview"><LayoutDashboard className="h-4 w-4 mr-2" /> Overview</TabsTrigger>
           <TabsTrigger value="control"><Send className="h-4 w-4 mr-2" /> Control</TabsTrigger>
           <TabsTrigger value="files"><FileText className="h-4 w-4 mr-2" /> Files</TabsTrigger>
           <TabsTrigger value="history"><History className="h-4 w-4 mr-2" /> History</TabsTrigger>
+          <TabsTrigger value="maintenance"><Wrench className="h-4 w-4 mr-2" /> Maintenance</TabsTrigger>
           <TabsTrigger value="webcam"><Camera className="h-4 w-4 mr-2" /> Webcam</TabsTrigger>
           <TabsTrigger value="settings">{isCloudPrinter ? <Cloud className="h-4 w-4 mr-2" /> : <Settings className="h-4 w-4 mr-2" />} Settings</TabsTrigger>
         </TabsList>
@@ -192,6 +194,7 @@ const PrinterDetails = () => {
         <TabsContent value="control" className="mt-6"><PrinterControlPanel printer={printer} /></TabsContent>
         <TabsContent value="files" className="mt-6"><PrinterFileManagementPanel printer={printer} /></TabsContent>
         <TabsContent value="history" className="mt-6"><PrintJobHistoryPanel printer={printer} /></TabsContent>
+        <TabsContent value="maintenance" className="mt-6"><MaintenanceLogPanel printer={printer} /></TabsContent> {/* New Tab */}
         <TabsContent value="webcam" className="mt-6"><PrinterWebcamPanel printer={printer} /></TabsContent>
         <TabsContent value="settings" className="mt-6 space-y-6">
           {isCloudPrinter ? <CloudPrinterSetup printer={printer} /> : (
