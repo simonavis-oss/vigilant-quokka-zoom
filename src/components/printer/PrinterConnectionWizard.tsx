@@ -33,7 +33,16 @@ const Step1Schema = z.object({
 });
 
 const Step2Schema = z.object({
-  base_url: z.string().url("Must be a valid URL (e.g., http://192.168.1.100)"),
+  base_url: z.preprocess(
+    (val) => {
+      // Prepend http:// if no protocol is present, to allow IP addresses/hostnames
+      if (typeof val === 'string' && val.length > 0 && !val.startsWith('http://') && !val.startsWith('https://')) {
+        return `http://${val}`;
+      }
+      return val;
+    },
+    z.string().url("Must be a valid URL or IP address (e.g., 192.168.1.100:7125). Protocol (http://) is recommended.")
+  ),
   api_key: z.string().optional(),
 });
 
@@ -57,7 +66,7 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
     mode: "onChange",
   });
 
-  const { trigger, getValues, formState: { isValid } } = form;
+  const { trigger, getValues, formState: { errors } } = form;
 
   const handleNext = async () => {
     if (step === 1) {
@@ -75,6 +84,7 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
       return;
     }
 
+    // data.base_url now contains the preprocessed URL (with http:// if missing)
     const { error } = await supabase.from("printers").insert({
       user_id: user.id,
       name: data.name,
@@ -147,7 +157,7 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
                 <FormItem>
                   <FormLabel>Printer Address (URL/IP)</FormLabel>
                   <FormControl>
-                    <Input placeholder="E.g., http://192.168.1.100:7125" {...field} />
+                    <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -175,9 +185,17 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
     }
   };
 
-  // Determine if the Next button should be disabled based on current step validation
-  const isStep1Valid = form.formState.dirtyFields.name && form.formState.dirtyFields.connection_type && !form.formState.errors.name && !form.formState.errors.connection_type;
-  const isStep2Valid = form.formState.dirtyFields.base_url && !form.formState.errors.base_url;
+  // --- Validation Logic for Button Disabling ---
+  
+  const nameValue = form.watch("name");
+  const typeValue = form.watch("connection_type");
+  const baseUrlValue = form.watch("base_url");
+
+  // Step 1 is valid if both fields have values and no errors
+  const isStep1Valid = !!nameValue && !!typeValue && !errors.name && !errors.connection_type;
+  
+  // Step 2 is valid if base_url has a value and no error (api_key is optional)
+  const isStep2Valid = !!baseUrlValue && !errors.base_url;
   
   const isNextDisabled = step === 1 ? !isStep1Valid : !isStep2Valid;
 
