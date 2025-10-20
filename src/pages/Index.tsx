@@ -1,10 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "@/context/SessionContext";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, X } from "lucide-react";
 import { useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import PrinterConnectionWizard from "@/components/printer/PrinterConnectionWizard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
@@ -14,7 +12,8 @@ import { useFarmStatus } from "@/hooks/use-farm-status";
 import { useTotalPrintTime } from "@/hooks/use-total-print-time";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
+import AddPrinterForm from "@/components/printer/AddPrinterForm";
 
 const fetchPrinters = async (userId: string): Promise<Printer[]> => {
   const { data, error } = await supabase
@@ -32,8 +31,8 @@ type ConnectionTypeFilter = Printer['connection_type'] | 'all';
 
 const Index = () => {
   const { user } = useSession();
-  const navigate = useNavigate(); // Initialize navigate
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const navigate = useNavigate();
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<ConnectionTypeFilter>('all');
   
@@ -47,7 +46,7 @@ const Index = () => {
   const { totalPrintTime, isLoading: isTimeLoading } = useTotalPrintTime();
   
   const handlePrinterAdded = () => {
-    setIsWizardOpen(false);
+    setIsFormOpen(false); // Close form on success
     refetch(); // Refetch the list after a new printer is added
   };
 
@@ -84,24 +83,31 @@ const Index = () => {
         <h1 className="text-3xl font-bold">
           Welcome, {user?.email || "User"}!
         </h1>
-        <Dialog open={isWizardOpen} onOpenChange={setIsWizardOpen}>
-          <DialogTrigger asChild>
-            <Button>
+        
+        {/* Replaced Dialog with a simple button toggle */}
+        <Button onClick={() => setIsFormOpen(!isFormOpen)} variant={isFormOpen ? "secondary" : "default"}>
+          {isFormOpen ? (
+            <>
+              <X className="mr-2 h-4 w-4" /> Close Form
+            </>
+          ) : (
+            <>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Printer
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Printer Connection Wizard</DialogTitle>
-            </DialogHeader>
-            <PrinterConnectionWizard onPrinterAdded={handlePrinterAdded} />
-          </DialogContent>
-        </Dialog>
+            </>
+          )}
+        </Button>
       </div>
 
       <p className="text-muted-foreground">
         This is your 3D Print Farm Dashboard.
       </p>
+      
+      {/* New Printer Form Section */}
+      {isFormOpen && (
+        <div className="mb-8">
+          <AddPrinterForm onPrinterAdded={handlePrinterAdded} />
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Printers Card */}
@@ -191,7 +197,7 @@ const Index = () => {
       ) : printerCount === 0 ? (
         <div className="p-8 border rounded-lg bg-card text-center">
           <h2 className="text-xl font-semibold mb-4">Get Started</h2>
-          <p>Click "Add Printer" to connect your first 3D printer.</p>
+          <p>Click "Add Printer" above to connect your first 3D printer.</p>
         </div>
       ) : (
         <div className="space-y-4">

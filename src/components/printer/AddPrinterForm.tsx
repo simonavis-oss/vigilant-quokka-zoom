@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,15 +22,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/SessionContext";
 import { showSuccess, showError } from "@/utils/toast";
-
-// --- Schemas ---
-
-const Step1Schema = z.object({
-  name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "octoprint", "klipper_go"], {
-    required_error: "Please select a connection type.",
-  }),
-});
+import { Loader2, PlusCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Helper function to validate URL/IP
 const validateUrlOrIp = (val: string) => {
@@ -49,7 +42,11 @@ const validateUrlOrIp = (val: string) => {
   }
 };
 
-const Step2Schema = z.object({
+const PrinterSchema = z.object({
+  name: z.string().min(1, "Printer name is required."),
+  connection_type: z.enum(["moonraker", "octoprint", "klipper_go"], {
+    required_error: "Please select a connection type.",
+  }),
   base_url: z.string()
     .min(1, "Printer address is required.")
     .refine(validateUrlOrIp, {
@@ -58,17 +55,16 @@ const Step2Schema = z.object({
   api_key: z.string().optional(),
 });
 
-const FullSchema = Step1Schema.merge(Step2Schema);
+type PrinterFormValues = z.infer<typeof PrinterSchema>;
 
-type PrinterFormValues = z.infer<typeof FullSchema>;
+interface AddPrinterFormProps {
+  onPrinterAdded: () => void;
+}
 
-// --- Component ---
-
-const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => void }) => {
+const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
   const { user } = useSession();
-  const [step, setStep] = useState(1);
   const form = useForm<PrinterFormValues>({
-    resolver: zodResolver(FullSchema),
+    resolver: zodResolver(PrinterSchema),
     defaultValues: {
       name: "",
       connection_type: "moonraker",
@@ -77,18 +73,9 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
     },
     mode: "onChange",
   });
-
-  const { trigger, getValues, formState: { errors } } = form;
-
-  const handleNext = async () => {
-    if (step === 1) {
-      // Only validate fields relevant to Step 1
-      const step1Valid = await trigger(["name", "connection_type"]);
-      if (step1Valid) {
-        setStep(2); // Advance to Step 2 if validation passes
-      }
-    }
-  };
+  
+  const connectionType = form.watch("connection_type");
+  const isSubmitting = form.formState.isSubmitting;
 
   const onSubmit = async (data: PrinterFormValues) => {
     if (!user) {
@@ -116,16 +103,20 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
     } else {
       showSuccess(`Printer "${data.name}" added successfully!`);
       form.reset();
-      setStep(1);
       onPrinterAdded();
     }
   };
 
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div className="space-y-4">
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <PlusCircle className="mr-2 h-5 w-5" /> Add New Printer
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -139,6 +130,7 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
                 </FormItem>
               )}
             />
+            
             <FormField
               control={form.control}
               name="connection_type"
@@ -161,12 +153,7 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
                 </FormItem>
               )}
             />
-          </div>
-        );
-      case 2:
-        const type = getValues("connection_type");
-        return (
-          <div className="space-y-4">
+            
             <FormField
               control={form.control}
               name="base_url"
@@ -180,7 +167,8 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
                 </FormItem>
               )}
             />
-            {type === "octoprint" && (
+            
+            {connectionType === "octoprint" && (
               <FormField
                 control={form.control}
                 name="api_key"
@@ -195,52 +183,20 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
                 )}
               />
             )}
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
 
-  // --- Validation Logic for Button Disabling ---
-  
-  const nameValue = form.watch("name");
-  const typeValue = form.watch("connection_type");
-  const baseUrlValue = form.watch("base_url");
-
-  // Step 1 is valid if both fields have values and no errors
-  const isStep1Valid = !!nameValue && !!typeValue && !errors.name && !errors.connection_type;
-  
-  // Step 2 is valid if base_url has a value and no error
-  const isStep2Valid = !!baseUrlValue && !errors.base_url;
-  
-  const isNextDisabled = step === 1 ? !isStep1Valid : !isStep2Valid;
-
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {renderStep()}
-
-        <div className="flex justify-between pt-4">
-          {step > 1 && (
-            <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
-              Back
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={isSubmitting || !form.formState.isValid}
+            >
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+              Add Printer
             </Button>
-          )}
-          {step < 2 ? (
-            <Button type="button" onClick={handleNext} disabled={!isStep1Valid}>
-              Next
-            </Button>
-          ) : (
-            <Button type="submit" disabled={!isStep2Valid}>
-              Connect Printer
-            </Button>
-          )}
-        </div>
-      </form>
-    </Form>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 };
 
-export default PrinterConnectionWizard;
+export default AddPrinterForm;
