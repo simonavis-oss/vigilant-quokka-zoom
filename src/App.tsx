@@ -11,7 +11,8 @@ import NotFound from "./pages/NotFound";
 import MainLayout from "./layouts/MainLayout";
 import PrinterDetails from "./pages/PrinterDetails";
 import ProfilePage from "./pages/Profile";
-import PrintQueuePage from "./pages/PrintQueue"; // Import PrintQueuePage
+import PrintQueuePage from "./pages/PrintQueue";
+import PrintersPage from "./pages/Printers"; // Import PrintersPage
 
 const queryClient = new QueryClient();
 
@@ -25,16 +26,18 @@ const App = () => (
           <SessionContextProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
-              
+
               {/* Protected Routes wrapped in MainLayout */}
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Index />} />
+                <Route path="/printers" element={<PrintersPage />} />{" "}
+                {/* Add Printers Route */}
                 <Route path="/printers/:id" element={<PrinterDetails />} />
                 <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/queue" element={<PrintQueuePage />} /> {/* Add Print Queue Route */}
+                <Route path="/queue" element={<PrintQueuePage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               </Route>
-              
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </SessionContextProvider>

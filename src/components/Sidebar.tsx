@@ -1,10 +1,14 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Settings, Printer, User, ListOrdered } from "lucide-react";
+import {
+  LayoutDashboard,
+  Settings,
+  Printer,
+  User,
+  ListOrdered,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
   {
@@ -14,7 +18,7 @@ const navItems = [
   },
   {
     title: "Printers",
-    href: "/", // Changed from "/printers" to "/" since the dashboard is the printer list
+    href: "/printers", // Changed from "/" to "/printers"
     icon: Printer,
   },
   {
@@ -46,7 +50,12 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           {navItems.map((item) => (
             <Link key={item.href} to={item.href}>
               <Button
-                variant={location.pathname === item.href ? "secondary" : "ghost"}
+                variant={
+                  location.pathname.startsWith(item.href) &&
+                  (item.href !== "/" || location.pathname === "/")
+                    ? "secondary"
+                    : "ghost"
+                }
                 className="w-full justify-start"
               >
                 <item.icon className="mr-2 h-4 w-4" />
