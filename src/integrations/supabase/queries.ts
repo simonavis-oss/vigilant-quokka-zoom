@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrintJob } from "@/types/print-job";
 import { PrintQueueItem } from "@/types/print-queue";
 import { Printer } from "@/types/printer";
+import { subDays } from "date-fns";
 
 export interface Profile {
   id: string;
@@ -71,4 +72,34 @@ export const fetchPrintQueue = async (userId: string): Promise<PrintQueueItem[]>
     return mockPrintQueue.map(job => ({ ...job, user_id: userId }));
   }
   return data as PrintQueueItem[];
+};
+
+const mockAllUserJobs: PrintJob[] = [
+  // Last 7 days of mock data
+  { id: "job-1", user_id: "mock", printer_id: "p1", file_name: "file1.gcode", duration_seconds: 3600, status: 'success', started_at: subDays(new Date(), 1).toISOString(), finished_at: new Date().toISOString() },
+  { id: "job-2", user_id: "mock", printer_id: "p2", file_name: "file2.gcode", duration_seconds: 7200, status: 'success', started_at: subDays(new Date(), 1).toISOString(), finished_at: new Date().toISOString() },
+  { id: "job-3", user_id: "mock", printer_id: "p1", file_name: "file3.gcode", duration_seconds: 1800, status: 'failed', started_at: subDays(new Date(), 2).toISOString(), finished_at: new Date().toISOString() },
+  { id: "job-4", user_id: "mock", printer_id: "p1", file_name: "file4.gcode", duration_seconds: 9000, status: 'success', started_at: subDays(new Date(), 3).toISOString(), finished_at: new Date().toISOString() },
+  { id: "job-5", user_id: "mock", printer_id: "p2", file_name: "file5.gcode", duration_seconds: 5400, status: 'success', started_at: subDays(new Date(), 4).toISOString(), finished_at: new Date().toISOString() },
+  { id: "job-6", user_id: "mock", printer_id: "p1", file_name: "file6.gcode", duration_seconds: 3600, status: 'cancelled', started_at: subDays(new Date(), 5).toISOString(), finished_at: new Date().toISOString() },
+  { id: "job-7", user_id: "mock", printer_id: "p2", file_name: "file7.gcode", duration_seconds: 10800, status: 'success', started_at: subDays(new Date(), 6).toISOString(), finished_at: new Date().toISOString() },
+  { id: "job-8", user_id: "mock", printer_id: "p1", file_name: "file8.gcode", duration_seconds: 1200, status: 'success', started_at: subDays(new Date(), 6).toISOString(), finished_at: new Date().toISOString() },
+];
+
+export const fetchAllPrintJobsForUser = async (userId: string): Promise<PrintJob[]> => {
+  const { data, error } = await supabase
+    .from("print_jobs")
+    .select("*")
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  
+  if (!data || data.length === 0) {
+    return mockAllUserJobs.map(job => ({ ...job, user_id: userId }));
+  }
+  
+  return data as PrintJob[];
 };

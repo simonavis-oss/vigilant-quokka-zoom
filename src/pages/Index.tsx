@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, Search, X } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
+import { PrintJob } from "@/types/print-job";
 import PrinterCard from "@/components/printer/PrinterCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFarmStatus } from "@/hooks/use-farm-status";
@@ -14,18 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import AddPrinterForm from "@/components/printer/AddPrinterForm";
-
-const fetchPrinters = async (userId: string): Promise<Printer[]> => {
-  const { data, error } = await supabase
-    .from("printers")
-    .select("*")
-    .eq("user_id", userId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-  return data as Printer[];
-};
+import { fetchPrinters, fetchAllPrintJobsForUser } from "@/integrations/supabase/queries";
+import DashboardAnalytics from "@/components/dashboard/DashboardAnalytics";
 
 type ConnectionTypeFilter = Printer['connection_type'] | 'all';
 
@@ -42,12 +32,18 @@ const Index = () => {
     enabled: !!user?.id,
   });
   
+  const { data: allPrintJobs, isLoading: isJobsLoading } = useQuery<PrintJob[]>({
+    queryKey: ["allPrintJobs", user?.id],
+    queryFn: () => fetchAllPrintJobsForUser(user!.id),
+    enabled: !!user?.id,
+  });
+  
   const { totalPrinters, onlineCount, activePrints, isLoading: isStatusLoading } = useFarmStatus(printers);
   const { totalPrintTime, isLoading: isTimeLoading } = useTotalPrintTime();
   
   const handlePrinterAdded = () => {
-    setIsFormOpen(false); // Close form on success
-    refetch(); // Refetch the list after a new printer is added
+    setIsFormOpen(false);
+    refetch();
   };
 
   const filteredPrinters = useMemo(() => {
@@ -61,21 +57,7 @@ const Index = () => {
   }, [printers, searchTerm, filterType]);
 
   const printerCount = totalPrinters;
-  const isLoading = isPrintersLoading || isStatusLoading || isTimeLoading;
-
-  // Function to handle card clicks (for future filtering/navigation)
-  const handleCardClick = (target: 'all' | 'online' | 'active') => {
-    if (target === 'online') {
-      // For now, just set the filter to a known type or refresh
-      // In a real app, this would set a global filter state or navigate to a filtered view.
-      setFilterType('all'); 
-    } else if (target === 'active') {
-      // Same as above
-      setFilterType('all');
-    }
-    // For now, clicking any card just ensures we are on the main page
-    navigate('/');
-  };
+  const isLoading = isPrintersLoading || isStatusLoading || isTimeLoading || isJobsLoading;
 
   return (
     <div className="space-y-8">
@@ -83,18 +65,8 @@ const Index = () => {
         <h1 className="text-3xl font-bold">
           Welcome, {user?.email || "User"}!
         </h1>
-        
-        {/* Replaced Dialog with a simple button toggle */}
         <Button onClick={() => setIsFormOpen(!isFormOpen)} variant={isFormOpen ? "secondary" : "default"}>
-          {isFormOpen ? (
-            <>
-              <X className="mr-2 h-4 w-4" /> Close Form
-            </>
-          ) : (
-            <>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Printer
-            </>
-          )}
+          {isFormOpen ? <><X className="mr-2 h-4 w-4" /> Close Form</> : <><PlusCircle className="mr-2 h-4 w-4" /> Add Printer</>}
         </Button>
       </div>
 
@@ -102,7 +74,6 @@ const Index = () => {
         This is your 3D Print Farm Dashboard.
       </p>
       
-      {/* New Printer Form Section */}
       {isFormOpen && (
         <div className="mb-8">
           <AddPrinterForm onPrinterAdded={handlePrinterAdded} />
@@ -110,83 +81,20 @@ const Index = () => {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total Printers Card */}
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-shadow" 
-          onClick={() => handleCardClick('all')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Printers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isPrintersLoading ? <Skeleton className="h-8 w-12" /> : printerCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {printerCount === 0 ? "No printers registered." : `${onlineCount} online.`}
-            </p>
-          </CardContent>
-        </Card>
-        
-        {/* Printers Online Card */}
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-shadow" 
-          onClick={() => handleCardClick('online')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Printers Online
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Skeleton className="h-8 w-12" /> : onlineCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {printerCount > 0 ? `${printerCount - onlineCount} offline.` : "Ready to connect."}
-            </p>
-          </CardContent>
-        </Card>
-        
-        {/* Active Prints Card */}
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-shadow" 
-          onClick={() => handleCardClick('active')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Prints
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Skeleton className="h-8 w-12" /> : activePrints}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {activePrints > 0 ? `${activePrints} prints running.` : "Ready to start printing."}
-            </p>
-          </CardContent>
-        </Card>
-        
-        {/* Total Print Time Card (Static for now as it doesn't lead to a list) */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Print Time
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isTimeLoading ? <Skeleton className="h-8 w-24" /> : totalPrintTime}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Accumulated time across all printers (Mocked)
-            </p>
-          </CardContent>
-        </Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Printers</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{isPrintersLoading ? <Skeleton className="h-8 w-12" /> : printerCount}</div><p className="text-xs text-muted-foreground">{printerCount === 0 ? "No printers registered." : `${onlineCount} online.`}</p></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Printers Online</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-12" /> : onlineCount}</div><p className="text-xs text-muted-foreground">{printerCount > 0 ? `${printerCount - onlineCount} offline.` : "Ready to connect."}</p></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Active Prints</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-12" /> : activePrints}</div><p className="text-xs text-muted-foreground">{activePrints > 0 ? `${activePrints} prints running.` : "Ready to start printing."}</p></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Print Time</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{isTimeLoading ? <Skeleton className="h-8 w-24" /> : totalPrintTime}</div><p className="text-xs text-muted-foreground">Accumulated time across all printers (Mocked)</p></CardContent></Card>
       </div>
+      
+      {isLoading ? (
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-[350px]" />
+          <Skeleton className="h-[350px]" />
+        </div>
+      ) : allPrintJobs && allPrintJobs.length > 0 ? (
+        <DashboardAnalytics jobs={allPrintJobs} />
+      ) : null}
       
       {isPrintersLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -202,42 +110,15 @@ const Index = () => {
       ) : (
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Your Printers</h2>
-          
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-grow">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search printers by name..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select 
-              onValueChange={(value: ConnectionTypeFilter) => setFilterType(value)} 
-              defaultValue="all"
-            >
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Filter by Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="moonraker">Moonraker</SelectItem>
-                <SelectItem value="octoprint">OctoPrint</SelectItem>
-                <SelectItem value="klipper_go">Klipper Go</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="relative flex-grow"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search printers by name..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+            <Select onValueChange={(value: ConnectionTypeFilter) => setFilterType(value)} defaultValue="all"><SelectTrigger className="w-full md:w-[200px]"><SelectValue placeholder="Filter by Type" /></SelectTrigger><SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="moonraker">Moonraker</SelectItem><SelectItem value="octoprint">OctoPrint</SelectItem><SelectItem value="klipper_go">Klipper Go</SelectItem></SelectContent></Select>
           </div>
-
           {filteredPrinters.length === 0 ? (
-            <div className="p-8 border rounded-lg bg-card text-center">
-              <p className="text-muted-foreground">No printers match your search or filter criteria.</p>
-            </div>
+            <div className="p-8 border rounded-lg bg-card text-center"><p className="text-muted-foreground">No printers match your search or filter criteria.</p></div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredPrinters.map((printer) => (
-                <PrinterCard key={printer.id} printer={printer} />
-              ))}
+              {filteredPrinters.map((printer) => (<PrinterCard key={printer.id} printer={printer} />))}
             </div>
           )}
         </div>
