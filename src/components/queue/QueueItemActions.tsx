@@ -1,12 +1,12 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Play, Trash2, Loader2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintQueueItem } from "@/types/print-queue";
-import { assignPrintJob } from "@/integrations/supabase/functions";
 import { showSuccess, showError } from "@/utils/toast";
 import DeleteConfirmationDialog from "../DeleteConfirmationDialog";
 import { supabase } from "@/integrations/supabase/client";
+import AssignPrinterButton from "./AssignPrinterButton";
 
 interface QueueItemActionsProps {
   item: PrintQueueItem;
@@ -22,19 +22,7 @@ const deleteQueueItem = async (jobId: string) => {
 const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
   const queryClient = useQueryClient();
   
-  const assignMutation = useMutation({
-    mutationFn: assignPrintJob,
-    onSuccess: (response) => {
-      showSuccess(response.message);
-      // Invalidate both the queue and the printer status cache
-      queryClient.invalidateQueries({ queryKey: ["printQueue"] });
-      queryClient.invalidateQueries({ queryKey: ["printerStatus"] });
-    },
-    onError: (err) => {
-      showError(err.message);
-    },
-  });
-  
+  // Only need delete mutation here now
   const deleteMutation = useMutation({
     mutationFn: deleteQueueItem,
     onSuccess: () => {
@@ -45,16 +33,12 @@ const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
       showError(err.message);
     },
   });
-
-  const handleAssign = () => {
-    assignMutation.mutate(item.id);
-  };
   
   const handleDelete = () => {
     deleteMutation.mutate(item.id);
   };
 
-  const isActionPending = assignMutation.isPending || deleteMutation.isPending;
+  const isActionPending = deleteMutation.isPending;
 
   if (item.status === 'assigned') {
     return (
@@ -66,19 +50,7 @@ const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
 
   return (
     <div className="flex space-x-2">
-      <Button 
-        variant="default" 
-        size="sm" 
-        onClick={handleAssign}
-        disabled={isActionPending}
-      >
-        {assignMutation.isPending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Play className="h-4 w-4 mr-1" />
-        )}
-        Print Now
-      </Button>
+      <AssignPrinterButton item={item} disabled={isActionPending} />
       
       <DeleteConfirmationDialog
         onConfirm={handleDelete}
