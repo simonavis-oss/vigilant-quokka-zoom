@@ -30,7 +30,7 @@ export const fetchProfile = async (userId: string): Promise<Profile> => {
 // Mock data for demonstration purposes
 const mockPrintJobs: PrintJob[] = [
   {
-    id: "mock-1",
+    id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
     user_id: "mock-user-id",
     printer_id: "mock-printer-id",
     file_name: "Dragon_Vase.gcode",
@@ -41,7 +41,7 @@ const mockPrintJobs: PrintJob[] = [
     finished_at: new Date(Date.now() - 86400000 + 18000000).toISOString(),
   },
   {
-    id: "mock-2",
+    id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12",
     user_id: "mock-user-id",
     printer_id: "mock-printer-id",
     file_name: "Gear_Set_v2.gcode",
@@ -52,7 +52,7 @@ const mockPrintJobs: PrintJob[] = [
     finished_at: new Date(Date.now() - 3 * 86400000 + 7200000).toISOString(),
   },
   {
-    id: "mock-3",
+    id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13",
     user_id: "mock-user-id",
     printer_id: "mock-printer-id",
     file_name: "Phone_Stand.gcode",
@@ -93,7 +93,7 @@ export const fetchPrintJobs = async (printerId: string): Promise<PrintJob[]> => 
 // Mock data for print queue
 const mockPrintQueue: PrintQueueItem[] = [
   {
-    id: "queue-1",
+    id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11",
     user_id: "mock-user-id",
     file_name: "New_Part_A.gcode",
     status: 'pending',
@@ -103,7 +103,7 @@ const mockPrintQueue: PrintQueueItem[] = [
     assigned_at: null,
   },
   {
-    id: "queue-2",
+    id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12",
     user_id: "mock-user-id",
     file_name: "Large_Support_Structure.gcode",
     status: 'pending',
@@ -113,7 +113,7 @@ const mockPrintQueue: PrintQueueItem[] = [
     assigned_at: null,
   },
   {
-    id: "queue-3",
+    id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13",
     user_id: "mock-user-id",
     file_name: "Assigned_Job_B.gcode",
     status: 'assigned',
