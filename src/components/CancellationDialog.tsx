@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CancellationDialogProps {
   onConfirm: (reason: string) => void;
@@ -20,6 +27,17 @@ interface CancellationDialogProps {
   description: string;
 }
 
+const CANCELLATION_REASONS = [
+  "First layer adhesion failure",
+  "Warping or curling",
+  "Filament runout or jam",
+  "Power failure",
+  "Print quality issue",
+  "Extruder clogged",
+  "Test print / Calibration",
+  "Other",
+];
+
 const CancellationDialog: React.FC<CancellationDialogProps> = ({
   onConfirm,
   triggerButton,
@@ -27,15 +45,26 @@ const CancellationDialog: React.FC<CancellationDialogProps> = ({
   description,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [reason, setReason] = useState("");
+  const [selectedReason, setSelectedReason] = useState("");
+  const [otherReason, setOtherReason] = useState("");
+
+  useEffect(() => {
+    // Reset state when dialog is closed
+    if (!isOpen) {
+      setSelectedReason("");
+      setOtherReason("");
+    }
+  }, [isOpen]);
 
   const handleConfirm = () => {
-    if (reason.trim()) {
-      onConfirm(reason);
+    const finalReason = selectedReason === "Other" ? otherReason.trim() : selectedReason;
+    if (finalReason) {
+      onConfirm(finalReason);
       setIsOpen(false);
-      setReason("");
     }
   };
+
+  const isConfirmDisabled = !selectedReason || (selectedReason === "Other" && !otherReason.trim());
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -48,21 +77,38 @@ const CancellationDialog: React.FC<CancellationDialogProps> = ({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="cancellation-reason">Reason for Cancellation (Required)</Label>
-            <Textarea
-              id="cancellation-reason"
-              placeholder="E.g., First layer adhesion failed..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
+            <Select onValueChange={setSelectedReason} value={selectedReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent>
+                {CANCELLATION_REASONS.map((reason) => (
+                  <SelectItem key={reason} value={reason}>
+                    {reason}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          {selectedReason === "Other" && (
+            <div className="grid gap-2">
+              <Label htmlFor="other-reason">Please specify:</Label>
+              <Textarea
+                id="other-reason"
+                placeholder="E.g., Stepper motor skipping..."
+                value={otherReason}
+                onChange={(e) => setOtherReason(e.target.value)}
+              />
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline" onClick={() => setReason("")}>Cancel</Button>
+            <Button variant="outline">Cancel</Button>
           </DialogClose>
           <Button
             onClick={handleConfirm}
-            disabled={!reason.trim()}
+            disabled={isConfirmDisabled}
             variant="destructive"
           >
             Confirm Cancellation
