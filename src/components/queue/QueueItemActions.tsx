@@ -1,12 +1,13 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { Trash2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintQueueItem } from "@/types/print-queue";
 import { showSuccess, showError } from "@/utils/toast";
 import DeleteConfirmationDialog from "../DeleteConfirmationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import AssignPrinterButton from "./AssignPrinterButton";
+import { cancelPrintJob } from "@/integrations/supabase/functions";
 
 interface QueueItemActionsProps {
   item: PrintQueueItem;
@@ -22,7 +23,6 @@ const deleteQueueItem = async (jobId: string) => {
 const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
   const queryClient = useQueryClient();
   
-  // Only need delete mutation here now
   const deleteMutation = useMutation({
     mutationFn: deleteQueueItem,
     onSuccess: () => {
@@ -33,18 +33,42 @@ const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
       showError(err.message);
     },
   });
+
+  const cancelMutation = useMutation({
+    mutationFn: cancelPrintJob,
+    onSuccess: (response) => {
+      showSuccess(response.message);
+      queryClient.invalidateQueries({ queryKey: ["printQueue"] });
+      queryClient.invalidateQueries({ queryKey: ["printJobs", item.printer_id] });
+    },
+    onError: (err) => {
+      showError(err.message);
+    },
+  });
   
   const handleDelete = () => {
     deleteMutation.mutate(item.id);
   };
 
-  const isActionPending = deleteMutation.isPending;
+  const handleCancel = () => {
+    cancelMutation.mutate(item.id);
+  };
+
+  const isActionPending = deleteMutation.isPending || cancelMutation.isPending;
 
   if (item.status === 'assigned') {
     return (
-      <Button variant="secondary" size="sm" disabled>
-        Assigned
-      </Button>
+      <DeleteConfirmationDialog
+        onConfirm={handleCancel}
+        title={`Cancel print job "${item.file_name}"?`}
+        description="This will send a stop command to the printer and move the job to your print history as 'cancelled'. This action cannot be undone."
+        triggerButton={
+          <Button variant="destructive" size="sm" disabled={isActionPending}>
+            {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
+            Cancel Job
+          </Button>
+        }
+      />
     );
   }
 

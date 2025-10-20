@@ -24,6 +24,11 @@ export interface AssignmentResponse {
   printer_name?: string;
 }
 
+export interface CancelResponse {
+  status: "success" | "error";
+  message: string;
+}
+
 export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus> => {
   const { data, error } = await supabase.functions.invoke("printer-status", {
     body: { id: printerId },
@@ -80,4 +85,20 @@ export const assignPrintJob = async (jobId: string): Promise<AssignmentResponse>
   }
 
   return data as AssignmentResponse;
+};
+
+export const cancelPrintJob = async (jobId: string): Promise<CancelResponse> => {
+  const { data, error } = await supabase.functions.invoke("cancel-print-job", {
+    body: { job_id: jobId },
+  });
+
+  if (error) {
+    throw new Error(`Edge Function Invocation Error: ${error.message}`);
+  }
+  
+  if (data.status === "error") {
+    throw new Error(data.message);
+  }
+
+  return data as CancelResponse;
 };
