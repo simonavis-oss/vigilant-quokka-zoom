@@ -29,7 +29,16 @@ const PrinterEditSchema = z.object({
   connection_type: z.enum(["moonraker", "octoprint", "klipper_go"], {
     required_error: "Please select a connection type.",
   }),
-  base_url: z.string().url("Must be a valid URL (e.g., http://192.168.1.100)"),
+  base_url: z.preprocess(
+    (val) => {
+      // Prepend http:// if no protocol is present, to allow IP addresses/hostnames
+      if (typeof val === 'string' && val.length > 0 && !val.startsWith('http://') && !val.startsWith('https://')) {
+        return `http://${val}`;
+      }
+      return val;
+    },
+    z.string().url("Must be a valid URL or IP address (e.g., http://192.168.1.100:7125)")
+  ),
   api_key: z.string().optional(),
 });
 
@@ -49,7 +58,8 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
     defaultValues: {
       name: printer.name,
       connection_type: printer.connection_type,
-      base_url: printer.base_url,
+      // Note: printer.base_url already contains the protocol if added via the wizard
+      base_url: printer.base_url, 
       api_key: printer.api_key || "",
     },
     mode: "onChange",
@@ -59,6 +69,7 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
     // Only submit fields that have changed
     const updates: Partial<Printer> = { id: printer.id };
     
+    // Compare preprocessed data (data.base_url) with stored data (printer.base_url)
     if (data.name !== printer.name) updates.name = data.name;
     if (data.connection_type !== printer.connection_type) updates.connection_type = data.connection_type;
     if (data.base_url !== printer.base_url) updates.base_url = data.base_url;
