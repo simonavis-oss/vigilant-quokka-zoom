@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Printer } from "@/types/printer";
-import { Loader2 } from "lucide-react";
+import { Loader2, Cloud } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 // --- Schemas ---
@@ -116,6 +116,7 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="moonraker">Moonraker / Mainsail / Fluid (Recommended)</SelectItem>
+                  <SelectItem value="cloud_agent"><div className="flex items-center">Cloud Agent<Cloud className="ml-2 h-4 w-4 text-blue-500"/></div></SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
