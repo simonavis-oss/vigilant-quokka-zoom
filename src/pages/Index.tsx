@@ -34,7 +34,7 @@ const Index = () => {
     enabled: !!user?.id,
   });
   
-  const { totalPrinters, onlineCount, isLoading: isStatusLoading } = useFarmStatus(printers);
+  const { totalPrinters, onlineCount, activePrints, isLoading: isStatusLoading } = useFarmStatus(printers);
   
   const handlePrinterAdded = () => {
     setIsWizardOpen(false);
@@ -107,9 +107,11 @@ const Index = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Skeleton className="h-8 w-12" /> : activePrints}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Ready to start printing.
+              {activePrints > 0 ? `${activePrints} prints running.` : "Ready to start printing."}
             </p>
           </CardContent>
         </Card>

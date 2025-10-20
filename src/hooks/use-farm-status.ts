@@ -6,6 +6,7 @@ import { useEffect } from "react";
 interface FarmStatus {
   totalPrinters: number;
   onlineCount: number;
+  activePrints: number; // Added activePrints count
   isLoading: boolean;
 }
 
@@ -32,10 +33,15 @@ export const useFarmStatus = (printers: Printer[] | undefined): FarmStatus => {
 
   const isLoading = printerStatusQueries.some(query => query.isLoading);
   
+  const successfulStatuses = printerStatusQueries
+    .filter(query => query.isSuccess && query.data)
+    .map(query => query.data as PrinterStatus);
+
   // Calculate online count based on successful queries
-  const onlineCount = printerStatusQueries.filter(query => 
-    query.isSuccess && query.data // A successful query implies the printer is reachable/online
-  ).length;
+  const onlineCount = successfulStatuses.length;
+  
+  // Calculate active prints
+  const activePrints = successfulStatuses.filter(status => status.is_printing).length;
 
   // Pre-fetch status for any new printers that might have been added 
   // (though the individual PrinterCard handles its own fetch, this helps populate the cache)
@@ -53,6 +59,7 @@ export const useFarmStatus = (printers: Printer[] | undefined): FarmStatus => {
   return {
     totalPrinters: printers?.length || 0,
     onlineCount,
+    activePrints,
     isLoading,
   };
 };
