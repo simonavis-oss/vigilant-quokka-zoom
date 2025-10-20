@@ -19,7 +19,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // --- Authentication and Printer Fetching (Same as before) ---
+  // --- Authentication and Printer Fetching ---
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -46,15 +46,24 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Unauthorized access" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // --- Live Moonraker API Call ---
+  // --- Live Moonraker API Call with Timeout ---
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
+
     const moonrakerUrl = `${printer.base_url}/printer/objects/query?webhooks&print_stats&display_status&extruder&heater_bed&virtual_sdcard`;
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (printer.api_key) {
       headers["X-Api-Key"] = printer.api_key;
     }
 
-    const response = await fetch(moonrakerUrl, { method: "GET", headers });
+    const response = await fetch(moonrakerUrl, { 
+      method: "GET", 
+      headers,
+      signal: controller.signal 
+    });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       await supabaseServiceRole.from("printers").update({ is_online: false }).eq("id", printerId);
@@ -64,7 +73,6 @@ serve(async (req) => {
     const data = await response.json();
     const status = data.result.status;
 
-    // --- Data Parsing and Formatting ---
     const printStats = status.print_stats;
     const isPrinting = ["printing", "paused"].includes(printStats.state);
     
@@ -86,8 +94,17 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error(`Error connecting to printer ${printerId}:`, error.message);
     await supabaseServiceRole.from("printers").update({ is_online: false }).eq("id", printerId);
+    
+    if (error.name === 'AbortError') {
+      console.error(`Timeout connecting to printer ${printerId}`);
+      return new Response(JSON.stringify({ error: `Connection timed out after 5 seconds.` }), {
+        status: 504, // Gateway Timeout
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.error(`Error connecting to printer ${printerId}:`, error.message);
     return new Response(JSON.stringify({ error: `Failed to connect to printer: ${error.message}` }), {
       status: 503,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

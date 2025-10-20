@@ -66,73 +66,6 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
     cancelMutation.mutate({ printerId: printer.id, reason });
   };
 
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex items-center space-x-2 text-sm text-muted-foreground p-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Connecting...</span>
-        </div>
-      );
-    }
-
-    const isOnline = !isError;
-
-    return (
-      <>
-        <CardContent className="flex-grow space-y-3">
-          <PrinterStatusDisplay status={status!} isOnline={isOnline} />
-          <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Connection Type:</span> {printer.connection_type}
-          </p>
-        </CardContent>
-        
-        {isOnline && status?.is_printing && (
-          <div className="p-4 border-t grid grid-cols-2 gap-2">
-            {status.is_paused ? (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => resumeMutation.mutate()}
-                disabled={resumeMutation.isPending}
-              >
-                {resumeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                Resume
-              </Button>
-            ) : (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => pauseMutation.mutate()}
-                disabled={pauseMutation.isPending}
-              >
-                {pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
-                Pause
-              </Button>
-            )}
-            <CancellationDialog
-              onConfirm={handleCancel}
-              title={`Cancel print on ${printer.name}?`}
-              description="This will stop the current print job and move it to your history. Please provide a reason for the cancellation."
-              triggerButton={
-                <Button variant="destructive" size="sm" disabled={cancelMutation.isPending}>
-                  {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
-                  Cancel
-                </Button>
-              }
-            />
-          </div>
-        )}
-
-        <div className="p-4 border-t">
-          <Button variant="secondary" className="w-full" onClick={handleManageClick}>
-            <Settings className="mr-2 h-4 w-4" /> Manage Printer
-          </Button>
-        </div>
-      </>
-    );
-  };
-
   return (
     <Card className="flex flex-col h-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -141,7 +74,71 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
           <CardTitle className="text-lg font-semibold">{printer.name}</CardTitle>
         </div>
       </CardHeader>
-      {renderContent()}
+      
+      <CardContent className="flex-grow space-y-3">
+        {isLoading ? (
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground pt-4">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Connecting...</span>
+          </div>
+        ) : (
+          <>
+            <PrinterStatusDisplay status={status!} isOnline={!isError} />
+            {isError ? (
+              <p className="text-xs text-muted-foreground pt-2">
+                Check the printer's power and network, or manage settings to update its address.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Connection Type:</span> {printer.connection_type}
+              </p>
+            )}
+          </>
+        )}
+      </CardContent>
+      
+      {!isLoading && !isError && status?.is_printing && (
+        <div className="p-4 border-t grid grid-cols-2 gap-2">
+          {status.is_paused ? (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => resumeMutation.mutate()}
+              disabled={resumeMutation.isPending}
+            >
+              {resumeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+              Resume
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => pauseMutation.mutate()}
+              disabled={pauseMutation.isPending}
+            >
+              {pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
+              Pause
+            </Button>
+          )}
+          <CancellationDialog
+            onConfirm={handleCancel}
+            title={`Cancel print on ${printer.name}?`}
+            description="This will stop the current print job and move it to your history. Please provide a reason for the cancellation."
+            triggerButton={
+              <Button variant="destructive" size="sm" disabled={cancelMutation.isPending}>
+                {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                Cancel
+              </Button>
+            }
+          />
+        </div>
+      )}
+
+      <div className="p-4 border-t mt-auto">
+        <Button variant="secondary" className="w-full" onClick={handleManageClick}>
+          <Settings className="mr-2 h-4 w-4" /> Manage Printer
+        </Button>
+      </div>
     </Card>
   );
 };
