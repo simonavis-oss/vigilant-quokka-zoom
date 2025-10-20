@@ -11,6 +11,7 @@ import { Printer } from "@/types/printer";
 import PrinterCard from "@/components/printer/PrinterCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFarmStatus } from "@/hooks/use-farm-status";
+import { useTotalPrintTime } from "@/hooks/use-total-print-time"; // Import new hook
 
 const fetchPrinters = async (userId: string): Promise<Printer[]> => {
   const { data, error } = await supabase
@@ -35,6 +36,7 @@ const Index = () => {
   });
   
   const { totalPrinters, onlineCount, activePrints, isLoading: isStatusLoading } = useFarmStatus(printers);
+  const { totalPrintTime, isLoading: isTimeLoading } = useTotalPrintTime(); // Use new hook
   
   const handlePrinterAdded = () => {
     setIsWizardOpen(false);
@@ -42,7 +44,7 @@ const Index = () => {
   };
 
   const printerCount = totalPrinters;
-  const isLoading = isPrintersLoading || isStatusLoading;
+  const isLoading = isPrintersLoading || isStatusLoading || isTimeLoading;
 
   return (
     <div className="space-y-8">
@@ -112,6 +114,21 @@ const Index = () => {
             </div>
             <p className="text-xs text-muted-foreground">
               {activePrints > 0 ? `${activePrints} prints running.` : "Ready to start printing."}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Print Time
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isTimeLoading ? <Skeleton className="h-8 w-24" /> : totalPrintTime}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Accumulated time across all printers (Mocked)
             </p>
           </CardContent>
         </Card>
