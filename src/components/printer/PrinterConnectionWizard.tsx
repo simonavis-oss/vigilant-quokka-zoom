@@ -61,9 +61,10 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
 
   const handleNext = async () => {
     if (step === 1) {
+      // Only validate fields relevant to Step 1
       const step1Valid = await trigger(["name", "connection_type"]);
       if (step1Valid) {
-        setStep(2);
+        setStep(2); // Advance to Step 2 if validation passes
       }
     }
   };
@@ -174,6 +175,13 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
     }
   };
 
+  // Determine if the Next button should be disabled based on current step validation
+  const isStep1Valid = form.formState.dirtyFields.name && form.formState.dirtyFields.connection_type && !form.formState.errors.name && !form.formState.errors.connection_type;
+  const isStep2Valid = form.formState.dirtyFields.base_url && !form.formState.errors.base_url;
+  
+  const isNextDisabled = step === 1 ? !isStep1Valid : !isStep2Valid;
+
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -186,11 +194,11 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
             </Button>
           )}
           {step < 2 ? (
-            <Button type="button" onClick={handleNext} disabled={!isValid}>
+            <Button type="button" onClick={handleNext} disabled={!isStep1Valid}>
               Next
             </Button>
           ) : (
-            <Button type="submit" disabled={!isValid}>
+            <Button type="submit" disabled={!isStep2Valid}>
               Connect Printer
             </Button>
           )}
