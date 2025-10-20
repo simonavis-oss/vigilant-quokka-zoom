@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
+import { Profile } from "./queries"; // Import Profile type
 
 export const deletePrinter = async (printerId: string): Promise<void> => {
   const { error } = await supabase
@@ -26,5 +27,22 @@ export const updatePrinter = async (printer: Partial<Printer>): Promise<void> =>
 
   if (error) {
     throw new Error(`Failed to update printer: ${error.message}`);
+  }
+};
+
+export const updateProfile = async (profile: Partial<Profile>): Promise<void> => {
+  const { id, ...updates } = profile;
+  
+  if (!id) {
+    throw new Error("Profile ID is required for update.");
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Failed to update profile: ${error.message}`);
   }
 };
