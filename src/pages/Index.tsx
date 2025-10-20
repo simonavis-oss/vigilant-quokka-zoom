@@ -139,7 +139,7 @@ const Index = () => {
           <Skeleton className="h-[350px]" />
         </div>
       ) : allPrintJobs && allPrintJobs.length > 0 ? (
-        <DashboardAnalytics jobs={allPrintJobs} />
+        <DashboardAnalytics jobs={allPrintJobs} printers={printers} />
       ) : (
         <div className="p-8 border rounded-lg bg-card text-center">
           <h2 className="text-xl font-semibold mb-4">No Print Data Yet</h2>
