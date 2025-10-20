@@ -141,3 +141,25 @@ export const handlePrintCompletion = async (printerId: string): Promise<Completi
 
   return data as CompletionResponse;
 };
+
+export const pausePrint = async (printerId: string): Promise<CommandResponse> => {
+  // M25 is the G-code for pausing an SD print.
+  return sendPrinterCommand(printerId, "M25");
+};
+
+export const cancelActivePrint = async (printerId: string): Promise<CancelResponse> => {
+  const { data, error } = await supabase.functions.invoke("cancel-active-print", {
+    body: { printer_id: printerId },
+  });
+
+  if (error) {
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
+  }
+  
+  if (data.status === "error") {
+    throw new Error(data.message);
+  }
+
+  return data as CancelResponse;
+};

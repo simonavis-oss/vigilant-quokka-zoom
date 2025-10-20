@@ -1,31 +1,16 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getPrinterStatus, PrinterStatus } from "@/integrations/supabase/functions";
-import { Loader2, Wifi, WifiOff } from "lucide-react";
+import { Wifi, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { PrinterStatus } from "@/integrations/supabase/functions";
 
 interface PrinterStatusDisplayProps {
-  printerId: string;
+  status: PrinterStatus;
+  isOnline: boolean;
 }
 
-const PrinterStatusDisplay: React.FC<PrinterStatusDisplayProps> = ({ printerId }) => {
-  const { data: status, isLoading, isError } = useQuery<PrinterStatus>({
-    queryKey: ["printerStatus", printerId],
-    queryFn: () => getPrinterStatus(printerId),
-    refetchInterval: 10000, // Poll status every 10 seconds for dashboard view
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Connecting...</span>
-      </div>
-    );
-  }
-
-  if (isError || !status) {
+const PrinterStatusDisplay: React.FC<PrinterStatusDisplayProps> = ({ status, isOnline }) => {
+  if (!isOnline) {
     return (
       <div className="space-y-3">
         <div className="flex items-center space-x-2">
@@ -38,7 +23,6 @@ const PrinterStatusDisplay: React.FC<PrinterStatusDisplayProps> = ({ printerId }
   }
   
   const statusText = status.is_printing ? `Printing (${status.progress}%)` : "Idle";
-  const isOnline = !isError; // Assuming successful query means the connection details are valid
 
   return (
     <div className="space-y-3">
