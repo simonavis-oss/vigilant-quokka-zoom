@@ -1,0 +1,27 @@
+import { supabase } from "@/integrations/supabase/client";
+import { PrintQueueItem } from "@/types/print-queue";
+
+interface NewPrintJob {
+  user_id: string;
+  file_name: string;
+  priority?: number;
+}
+
+export const insertPrintJob = async (job: NewPrintJob): Promise<PrintQueueItem> => {
+  const { data, error } = await supabase
+    .from("print_queue")
+    .insert({
+      user_id: job.user_id,
+      file_name: job.file_name,
+      priority: job.priority || 0,
+      status: 'pending',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to add job to queue: ${error.message}`);
+  }
+  
+  return data as PrintQueueItem;
+};

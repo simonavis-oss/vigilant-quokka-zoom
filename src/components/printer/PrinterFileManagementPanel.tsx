@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Play, Trash2, Loader2 } from "lucide-react";
+import { Upload, FileText, ListOrdered, Trash2, Loader2 } from "lucide-react";
 import { Printer } from "@/types/printer";
 import { showSuccess, showError } from "@/utils/toast";
 import DeleteConfirmationDialog from "../DeleteConfirmationDialog";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { insertPrintJob } from "@/integrations/supabase/queueMutations";
+import { useSession } from "@/context/SessionContext";
 
 interface PrinterFileManagementPanelProps {
   printer: Printer;
@@ -25,9 +28,21 @@ const mockFiles: PrintFile[] = [
 ];
 
 const PrinterFileManagementPanel: React.FC<PrinterFileManagementPanelProps> = ({ printer }) => {
+  const { user } = useSession();
+  const queryClient = useQueryClient();
   const [files, setFiles] = useState<PrintFile[]>(mockFiles);
   const [isUploading, setIsUploading] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
+
+  const queueMutation = useMutation({
+    mutationFn: insertPrintJob,
+    onSuccess: (data) => {
+      showSuccess(`File "${data.file_name}" added to the print queue.`);
+      queryClient.invalidateQueries({ queryKey: ["printQueue"] });
+    },
+    onError: (err) => {
+      showError(`Failed to add job to queue: ${err.message}`);
+    },
+  });
 
   const handleFileUpload = (file: File) => {
     setIsUploading(true);
@@ -50,19 +65,19 @@ const PrinterFileManagementPanel: React.FC<PrinterFileManagementPanelProps> = ({
     showSuccess(`File "${fileName}" deleted.`);
   };
 
-  const handleStartPrint = (fileName: string) => async () => {
-    setIsPrinting(true);
-    // Simulate sending a command to start print via Edge Function
-    try {
-      // In a real app, this would call sendPrinterCommand(printer.id, `M23 ${fileName} M24`);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      showSuccess(`Starting print of "${fileName}" on ${printer.name}.`);
-    } catch (error) {
-      showError("Failed to start print.");
-    } finally {
-      setIsPrinting(false);
+  const handleAddToQueue = (fileName: string) => () => {
+    if (!user) {
+      showError("User not authenticated.");
+      return;
     }
+    queueMutation.mutate({
+      user_id: user.id,
+      file_name: fileName,
+      priority: 10, // Default priority
+    });
   };
+
+  const isActionPending = queueMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -134,12 +149,13 @@ const PrinterFileManagementPanel: React.FC<PrinterFileManagementPanelProps> = ({
                   </div>
                   <div className="flex space-x-2">
                     <Button 
-                      variant="secondary" 
+                      variant="default" 
                       size="sm" 
-                      onClick={handleStartPrint(file.name)}
-                      disabled={isPrinting}
+                      onClick={handleAddToQueue(file.name)}
+                      disabled={isActionPending}
                     >
-                      {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                      {isActionPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListOrdered className="h-4 w-4 mr-1" />}
+                      Queue
                     </Button>
                     <DeleteConfirmationDialog
                       onConfirm={() => handleFileDelete(file.id, file.name)}
