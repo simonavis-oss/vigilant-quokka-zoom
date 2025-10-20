@@ -76,6 +76,7 @@ const PrintQueuePage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[80px]">Thumbnail</TableHead>
                     <TableHead>File Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Priority</TableHead>
@@ -86,6 +87,13 @@ const PrintQueuePage: React.FC = () => {
                 <TableBody>
                   {pendingJobs.map((job) => (
                     <TableRow key={job.id}>
+                      <TableCell>
+                        <img 
+                          src="/placeholder.svg" 
+                          alt="G-Code file thumbnail" 
+                          className="w-16 h-16 object-cover rounded-md bg-secondary"
+                        />
+                      </TableCell>
                       <TableCell className="font-medium truncate max-w-[150px] md:max-w-none">{job.file_name}</TableCell>
                       <TableCell>{getStatusBadge(job.status)}</TableCell>
                       <TableCell>{job.priority}</TableCell>
@@ -114,6 +122,7 @@ const PrintQueuePage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[80px]">Thumbnail</TableHead>
                     <TableHead>File Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Assigned Printer</TableHead>
@@ -124,6 +133,13 @@ const PrintQueuePage: React.FC = () => {
                 <TableBody>
                   {assignedJobs.map((job) => (
                     <TableRow key={job.id}>
+                      <TableCell>
+                        <img 
+                          src="/placeholder.svg" 
+                          alt="G-Code file thumbnail" 
+                          className="w-16 h-16 object-cover rounded-md bg-secondary"
+                        />
+                      </TableCell>
                       <TableCell className="font-medium truncate max-w-[150px] md:max-w-none">{job.file_name}</TableCell>
                       <TableCell>{getStatusBadge(job.status)}</TableCell>
                       <TableCell className="flex items-center">
