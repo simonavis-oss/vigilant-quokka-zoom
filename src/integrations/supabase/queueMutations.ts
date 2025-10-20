@@ -25,3 +25,23 @@ export const insertPrintJob = async (job: NewPrintJob): Promise<PrintQueueItem> 
   
   return data as PrintQueueItem;
 };
+
+export const insertMultiplePrintJobs = async (jobs: NewPrintJob[]): Promise<PrintQueueItem[]> => {
+  const jobsToInsert = jobs.map(job => ({
+    user_id: job.user_id,
+    file_name: job.file_name,
+    priority: job.priority || 0,
+    status: 'pending' as const,
+  }));
+
+  const { data, error } = await supabase
+    .from("print_queue")
+    .insert(jobsToInsert)
+    .select();
+
+  if (error) {
+    throw new Error(`Failed to add jobs to queue: ${error.message}`);
+  }
+  
+  return data as PrintQueueItem[];
+};
