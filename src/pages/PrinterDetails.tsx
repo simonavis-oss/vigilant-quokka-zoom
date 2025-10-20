@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +15,8 @@ import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import { deletePrinter, updatePrinter } from "@/integrations/supabase/mutations";
 import PrinterEditForm from "@/components/printer/PrinterEditForm";
 import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
-import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel"; // Import the new component
+import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
+import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel"; // Import new component
 
 // --- Data Fetching ---
 
@@ -184,7 +185,8 @@ const PrinterDetails = () => {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-1/3" />
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
+          <Skeleton className="h-10" />
           <Skeleton className="h-10" />
           <Skeleton className="h-10" />
           <Skeleton className="h-10" />
@@ -235,12 +237,15 @@ const PrinterDetails = () => {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 md:w-auto">
+        <TabsList className="grid w-full grid-cols-5 md:w-auto">
           <TabsTrigger value="overview" className="flex items-center">
             <LayoutDashboard className="h-4 w-4 mr-2" /> Overview
           </TabsTrigger>
           <TabsTrigger value="control" className="flex items-center">
             <Send className="h-4 w-4 mr-2" /> Control
+          </TabsTrigger>
+          <TabsTrigger value="files" className="flex items-center">
+            <FileText className="h-4 w-4 mr-2" /> Files
           </TabsTrigger>
           <TabsTrigger value="webcam" className="flex items-center">
             <Camera className="h-4 w-4 mr-2" /> Webcam
@@ -256,6 +261,10 @@ const PrinterDetails = () => {
         
         <TabsContent value="control" className="mt-6">
           <PrinterControlPanel printer={printer} />
+        </TabsContent>
+        
+        <TabsContent value="files" className="mt-6">
+          <PrinterFileManagementPanel printer={printer} />
         </TabsContent>
         
         <TabsContent value="webcam" className="mt-6">
