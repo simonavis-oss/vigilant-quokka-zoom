@@ -18,7 +18,6 @@ interface PrinterStatus {
 
 // Mock function to simulate fetching data from a 3D printer API
 const fetchMockStatus = (type: string): PrinterStatus => {
-  // Simulate different statuses based on connection type or just random chance
   const isPrinting = Math.random() > 0.5;
   const progress = isPrinting ? Math.floor(Math.random() * 100) : 0;
 
@@ -64,16 +63,17 @@ serve(async (req) => {
     });
   }
 
-  // 3. Initialize Supabase Client (using service role key for secure access)
+  // 3. Initialize Supabase Clients
   const supabaseServiceRole = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  
+  const supabaseAnon = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
   );
 
   // 4. Fetch Printer Details
@@ -91,20 +91,8 @@ serve(async (req) => {
     });
   }
   
-  // 5. Verify User Ownership (Security Check)
-  // We use the standard client to verify the token and get the user.
-  const supabaseAnon = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    }
-  );
-  
+  // 5. Verify User Ownership
   const { data: { user }, error: authError } = await supabaseAnon.auth.getUser();
-
   if (authError || !user || user.id !== printer.user_id) {
     return new Response(JSON.stringify({ error: "Unauthorized access to printer data" }), {
       status: 403,
@@ -112,12 +100,32 @@ serve(async (req) => {
     });
   }
 
-  // 6. Simulate API Call (Replace with actual fetch logic later)
+  // 6. Simulate API Call and determine online status
   console.log(`Attempting to connect to ${printer.connection_type} at ${printer.base_url}`);
-  
+  const isConnectionSuccessful = Math.random() > 0.1; // 90% success rate for mock
+
+  // 7. Update Database with the latest online status
+  const { error: updateError } = await supabaseServiceRole
+    .from("printers")
+    .update({ is_online: isConnectionSuccessful })
+    .eq("id", printerId);
+
+  if (updateError) {
+    // Log the error but don't fail the request, as the front-end can handle the connection error.
+    console.error(`Failed to update is_online status for printer ${printerId}:`, updateError);
+  }
+
+  // 8. Handle Connection Failure
+  if (!isConnectionSuccessful) {
+    return new Response(JSON.stringify({ error: "Failed to connect to printer API (Mock Failure)" }), {
+      status: 503, // Service Unavailable, will trigger an error in the client
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // 9. If successful, fetch mock status and return it
   const status = fetchMockStatus(printer.connection_type);
 
-  // 7. Return Status
   return new Response(JSON.stringify({ 
     status: "success", 
     data: status,
