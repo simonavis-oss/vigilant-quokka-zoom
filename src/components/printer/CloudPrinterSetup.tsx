@@ -181,7 +181,7 @@ const CloudPrinterSetup: React.FC<CloudPrinterSetupProps> = ({ printer }) => {
 
           <div>
             <h3 className="font-semibold mb-2">Step 2: Save and Configure the Agent Script</h3>
-            <p className="text-sm text-muted-foreground mb-2">Save the code below as a Python file (e.g., <code className="bg-muted px-1 rounded">agent.py</code>). <span className.="font-bold">Important:</span> You must edit the script to set the correct URLs for your setup.</p>
+            <p className="text-sm text-muted-foreground mb-2">Save the code below as a Python file (e.g., <code className="bg-muted px-1 rounded">agent.py</code>). <span className="font-bold">Important:</span> You must edit the script to set the correct URLs for your setup.</p>
             <div className="bg-muted p-3 rounded-lg font-mono text-sm relative max-h-96 overflow-auto">
               <pre><code>{scriptContent}</code></pre>
               <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7" onClick={() => handleCopy(scriptContent)}>
