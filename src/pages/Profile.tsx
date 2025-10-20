@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { showError, showSuccess } from "@/utils/toast";
 import ProfileForm from "@/components/ProfileForm";
 import { User } from "lucide-react";
+import AvatarUpload from "@/components/AvatarUpload";
 
 const ProfilePage = () => {
   const { user, isLoading: isSessionLoading } = useSession();
@@ -40,6 +41,10 @@ const ProfilePage = () => {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-1/4" />
+        <div className="flex flex-col items-center space-y-4 mb-8">
+          <Skeleton className="h-24 w-24 rounded-full" />
+          <Skeleton className="h-8 w-32" />
+        </div>
         <Card>
           <CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader>
           <CardContent className="space-y-4">
@@ -67,6 +72,15 @@ const ProfilePage = () => {
       <h1 className="text-3xl font-bold flex items-center">
         <User className="h-7 w-7 mr-3" /> Profile Settings
       </h1>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile Picture</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AvatarUpload profile={profile} />
+        </CardContent>
+      </Card>
       
       <Card>
         <CardHeader>
