@@ -3,12 +3,15 @@ import { Printer } from "@/types/printer";
 import { Badge } from "@/components/ui/badge";
 import { Settings, Wifi, WifiOff, Printer as PrinterIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface PrinterCardProps {
   printer: Printer;
 }
 
 const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
+  const navigate = useNavigate();
+  
   // Mock data for status display until real-time connection is implemented
   const mockStatus = {
     fileName: printer.is_online ? "Calibration_Cube.gcode" : "N/A",
@@ -16,6 +19,10 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
     bedTemp: printer.is_online ? "60°C / 60°C" : "N/A",
     nozzleTemp: printer.is_online ? "210°C / 210°C" : "N/A",
     status: printer.is_online ? "Printing (75%)" : "Idle",
+  };
+
+  const handleManageClick = () => {
+    navigate(`/printers/${printer.id}`);
   };
 
   return (
@@ -65,7 +72,7 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
         </div>
       </CardContent>
       <div className="p-4 border-t">
-        <Button variant="secondary" className="w-full">
+        <Button variant="secondary" className="w-full" onClick={handleManageClick}>
           <Settings className="mr-2 h-4 w-4" /> Manage Printer
         </Button>
       </div>

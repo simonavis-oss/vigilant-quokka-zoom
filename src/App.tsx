@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./layouts/MainLayout";
+import PrinterDetails from "./pages/PrinterDetails";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
               {/* Protected Routes wrapped in MainLayout */}
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Index />} />
+                <Route path="/printers/:id" element={<PrinterDetails />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               </Route>
               
