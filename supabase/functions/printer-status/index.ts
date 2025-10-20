@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface PrinterStatus {
   is_printing: boolean;
+  is_paused: boolean;
   progress: number;
   nozzle_temp: string;
   bed_temp: string;
@@ -21,10 +22,13 @@ interface ActiveJob {
 
 const fetchMockStatus = (activeJob: ActiveJob | null): PrinterStatus => {
   const isPrinting = !!activeJob;
+  const isPaused = isPrinting && Math.random() > 0.5; // 50% chance of being paused if printing
   const progress = isPrinting ? Math.floor(Math.random() * 100) : 0;
+  const statusText = isPaused ? "Paused" : "Printing";
 
   return {
     is_printing: isPrinting,
+    is_paused: isPaused,
     progress: progress,
     nozzle_temp: isPrinting ? "215°C / 215°C" : "25°C / 0°C",
     bed_temp: isPrinting ? "60°C / 60°C" : "25°C / 0°C",

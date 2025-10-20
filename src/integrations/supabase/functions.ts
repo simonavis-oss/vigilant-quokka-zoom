@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Define the structure of the data returned by the Edge Function
 export interface PrinterStatus {
   is_printing: boolean;
+  is_paused: boolean;
   progress: number;
   nozzle_temp: string;
   bed_temp: string;
@@ -150,6 +151,11 @@ export const handlePrintCompletion = async (printerId: string): Promise<Completi
 export const pausePrint = async (printerId: string): Promise<CommandResponse> => {
   // M25 is the G-code for pausing an SD print.
   return sendPrinterCommand(printerId, "M25");
+};
+
+export const resumePrint = async (printerId: string): Promise<CommandResponse> => {
+  // M24 is the G-code for resuming an SD print.
+  return sendPrinterCommand(printerId, "M24");
 };
 
 export const cancelActivePrint = async (printerId: string, reason: string): Promise<CancelResponse> => {

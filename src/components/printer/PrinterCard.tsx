@@ -1,11 +1,11 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Printer } from "@/types/printer";
-import { Settings, Printer as PrinterIcon, Loader2, Pause, XCircle } from "lucide-react";
+import { Settings, Printer as PrinterIcon, Loader2, Pause, XCircle, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import PrinterStatusDisplay from "./PrinterStatusDisplay";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getPrinterStatus, PrinterStatus, pausePrint, cancelActivePrint } from "@/integrations/supabase/functions";
+import { getPrinterStatus, PrinterStatus, pausePrint, resumePrint, cancelActivePrint } from "@/integrations/supabase/functions";
 import { showSuccess, showError } from "@/utils/toast";
 import CancellationDialog from "../CancellationDialog";
 
@@ -27,9 +27,21 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
     mutationFn: () => pausePrint(printer.id),
     onSuccess: () => {
       showSuccess(`Pause command sent to ${printer.name}.`);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });
     },
     onError: (err) => {
       showError(`Failed to pause: ${err.message}`);
+    },
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: () => resumePrint(printer.id),
+    onSuccess: () => {
+      showSuccess(`Resume command sent to ${printer.name}.`);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });
+    },
+    onError: (err) => {
+      showError(`Failed to resume: ${err.message}`);
     },
   });
 
@@ -77,15 +89,27 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
         
         {isOnline && status?.is_printing && (
           <div className="p-4 border-t grid grid-cols-2 gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => pauseMutation.mutate()}
-              disabled={pauseMutation.isPending}
-            >
-              {pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
-              Pause
-            </Button>
+            {status.is_paused ? (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => resumeMutation.mutate()}
+                disabled={resumeMutation.isPending}
+              >
+                {resumeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                Resume
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => pauseMutation.mutate()}
+                disabled={pauseMutation.isPending}
+              >
+                {pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
+                Pause
+              </Button>
+            )}
             <CancellationDialog
               onConfirm={handleCancel}
               title={`Cancel print on ${printer.name}?`}
