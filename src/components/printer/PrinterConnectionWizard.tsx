@@ -32,17 +32,29 @@ const Step1Schema = z.object({
   }),
 });
 
+// Helper function to validate URL/IP
+const validateUrlOrIp = (val: string) => {
+  if (!val) return false;
+  
+  let urlToTest = val;
+  if (!urlToTest.startsWith('http://') && !urlToTest.startsWith('https://')) {
+    urlToTest = `http://${urlToTest}`;
+  }
+  
+  try {
+    new URL(urlToTest);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const Step2Schema = z.object({
-  base_url: z.preprocess(
-    (val) => {
-      // Prepend http:// if no protocol is present, to allow IP addresses/hostnames
-      if (typeof val === 'string' && val.length > 0 && !val.startsWith('http://') && !val.startsWith('https://')) {
-        return `http://${val}`;
-      }
-      return val;
-    },
-    z.string().url("Must be a valid URL or IP address (e.g., 192.168.1.100:7125). Protocol (http://) is recommended.")
-  ),
+  base_url: z.string()
+    .min(1, "Printer address is required.")
+    .refine(validateUrlOrIp, {
+      message: "Must be a valid URL or IP address (e.g., 192.168.1.100:7125).",
+    }),
   api_key: z.string().optional(),
 });
 
@@ -84,12 +96,17 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
       return;
     }
 
-    // data.base_url now contains the preprocessed URL (with http:// if missing)
+    // Manually ensure the URL has a protocol before saving to DB
+    let finalBaseUrl = data.base_url;
+    if (!finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
+      finalBaseUrl = `http://${finalBaseUrl}`;
+    }
+
     const { error } = await supabase.from("printers").insert({
       user_id: user.id,
       name: data.name,
       connection_type: data.connection_type,
-      base_url: data.base_url,
+      base_url: finalBaseUrl, // Use the protocol-prefixed URL for DB storage
       api_key: data.api_key || null,
     });
 
@@ -192,10 +209,9 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
   const baseUrlValue = form.watch("base_url");
 
   // Step 1 is valid if both fields have values and no errors
-  // We rely on Zod/RHF to manage errors, but check for presence of values
   const isStep1Valid = !!nameValue && !!typeValue && !errors.name && !errors.connection_type;
   
-  // Step 2 is valid if base_url has a value and no error (api_key is optional)
+  // Step 2 is valid if base_url has a value and no error
   const isStep2Valid = !!baseUrlValue && !errors.base_url;
   
   const isNextDisabled = step === 1 ? !isStep1Valid : !isStep2Valid;
