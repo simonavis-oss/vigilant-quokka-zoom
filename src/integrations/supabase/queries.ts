@@ -9,6 +9,7 @@ export interface Profile {
   last_name: string | null;
   avatar_url: string | null;
   updated_at: string | null;
+  enable_advanced_metrics: boolean;
 }
 
 export const fetchPrinters = async (userId: string): Promise<Printer[]> => {
@@ -26,7 +27,7 @@ export const fetchPrinters = async (userId: string): Promise<Printer[]> => {
 export const fetchProfile = async (userId: string): Promise<Profile> => {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, avatar_url, updated_at")
+    .select("id, first_name, last_name, avatar_url, updated_at, enable_advanced_metrics")
     .eq("id", userId)
     .single();
 

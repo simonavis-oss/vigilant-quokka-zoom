@@ -9,6 +9,7 @@ import { showError, showSuccess } from "@/utils/toast";
 import ProfileForm from "@/components/ProfileForm";
 import { User } from "lucide-react";
 import AvatarUpload from "@/components/AvatarUpload";
+import ProfilePreferences from "@/components/ProfilePreferences";
 
 const ProfilePage = () => {
   const { user, isLoading: isSessionLoading } = useSession();
@@ -92,6 +93,15 @@ const ProfilePage = () => {
             onSubmit={handleUpdate} 
             isSubmitting={updateMutation.isPending} 
           />
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Preferences</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProfilePreferences profile={profile} />
         </CardContent>
       </Card>
       
