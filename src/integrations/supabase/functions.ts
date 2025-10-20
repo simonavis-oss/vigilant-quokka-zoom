@@ -17,6 +17,13 @@ export interface CommandResponse {
   message: string;
 }
 
+export interface AssignmentResponse {
+  status: "success" | "error";
+  message: string;
+  printer_id?: string;
+  printer_name?: string;
+}
+
 export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus> => {
   const { data, error } = await supabase.functions.invoke("printer-status", {
     body: { id: printerId },
@@ -54,4 +61,23 @@ export const sendPrinterCommand = async (printerId: string, command: string): Pr
   }
 
   return data as CommandResponse;
+};
+
+export const assignPrintJob = async (jobId: string): Promise<AssignmentResponse> => {
+  const { data, error } = await supabase.functions.invoke("assign-print-job", {
+    body: { job_id: jobId },
+  });
+
+  if (error) {
+    if (error.message.includes("non-2xx status code")) {
+      throw new Error(`Assignment failed. No available printers or API error.`);
+    }
+    throw new Error(`Edge Function Invocation Error: ${error.message}`);
+  }
+  
+  if (data.status === "error") {
+    throw new Error(data.message);
+  }
+
+  return data as AssignmentResponse;
 };

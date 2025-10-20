@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Settings, Printer, User } from "lucide-react";
+import { LayoutDashboard, Settings, Printer, User, ListOrdered } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,6 +16,11 @@ const navItems = [
     title: "Printers",
     href: "/", // Changed from "/printers" to "/" since the dashboard is the printer list
     icon: Printer,
+  },
+  {
+    title: "Print Queue",
+    href: "/queue",
+    icon: ListOrdered,
   },
   {
     title: "Profile",

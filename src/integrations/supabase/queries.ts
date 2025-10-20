@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { PrintJob } from "@/types/print-job";
+import { PrintQueueItem } from "@/types/print-queue"; // Import new type
 
 export interface Profile {
   id: string;
@@ -87,4 +88,60 @@ export const fetchPrintJobs = async (printerId: string): Promise<PrintJob[]> => 
   }
   
   return data as PrintJob[];
+};
+
+// Mock data for print queue
+const mockPrintQueue: PrintQueueItem[] = [
+  {
+    id: "queue-1",
+    user_id: "mock-user-id",
+    file_name: "New_Part_A.gcode",
+    status: 'pending',
+    priority: 10,
+    printer_id: null,
+    created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+    assigned_at: null,
+  },
+  {
+    id: "queue-2",
+    user_id: "mock-user-id",
+    file_name: "Large_Support_Structure.gcode",
+    status: 'pending',
+    priority: 5,
+    printer_id: null,
+    created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+    assigned_at: null,
+  },
+  {
+    id: "queue-3",
+    user_id: "mock-user-id",
+    file_name: "Assigned_Job_B.gcode",
+    status: 'assigned',
+    priority: 1,
+    printer_id: "some-printer-id",
+    created_at: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
+    assigned_at: new Date(Date.now() - 1800000).toISOString(),
+  },
+];
+
+export const fetchPrintQueue = async (userId: string): Promise<PrintQueueItem[]> => {
+  const { data, error } = await supabase
+    .from("print_queue")
+    .select("*")
+    .eq("user_id", userId)
+    .order("priority", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (error.code !== 'PGRST116') {
+      throw new Error(error.message);
+    }
+  }
+  
+  if (!data || data.length === 0) {
+    // Return mock data if DB is empty
+    return mockPrintQueue.map(job => ({ ...job, user_id: userId }));
+  }
+  
+  return data as PrintQueueItem[];
 };

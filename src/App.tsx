@@ -10,7 +10,8 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./layouts/MainLayout";
 import PrinterDetails from "./pages/PrinterDetails";
-import ProfilePage from "./pages/Profile"; // Import ProfilePage
+import ProfilePage from "./pages/Profile";
+import PrintQueuePage from "./pages/PrintQueue"; // Import PrintQueuePage
 
 const queryClient = new QueryClient();
 
@@ -29,7 +30,8 @@ const App = () => (
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Index />} />
                 <Route path="/printers/:id" element={<PrinterDetails />} />
-                <Route path="/profile" element={<ProfilePage />} /> {/* Add Profile Route */}
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/queue" element={<PrintQueuePage />} /> {/* Add Print Queue Route */}
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               </Route>
               
