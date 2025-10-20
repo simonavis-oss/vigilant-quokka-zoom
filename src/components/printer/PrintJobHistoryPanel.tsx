@@ -3,11 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { Clock, CheckCircle, XCircle, AlertTriangle, Loader2, Info } from "lucide-react";
 import { Printer } from "@/types/printer";
 import { fetchPrintJobs, PrintJob } from "@/integrations/supabase/queries";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PrintJobHistoryPanelProps {
   printer: Printer;
@@ -26,16 +27,32 @@ const formatDuration = (seconds: number): string => {
   return parts.join(' ');
 };
 
-const getStatusBadge = (status: PrintJob['status']) => {
-  switch (status) {
+const getStatusBadge = (job: PrintJob) => {
+  switch (job.status) {
     case 'success':
       return <Badge variant="default" className="bg-green-500 hover:bg-green-500/80"><CheckCircle className="h-3 w-3 mr-1" /> Success</Badge>;
     case 'failed':
       return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Failed</Badge>;
     case 'cancelled':
-      return <Badge variant="secondary"><AlertTriangle className="h-3 w-3 mr-1" /> Cancelled</Badge>;
+      return (
+        <div className="flex items-center space-x-2">
+          <Badge variant="secondary"><AlertTriangle className="h-3 w-3 mr-1" /> Cancelled</Badge>
+          {job.cancellation_reason && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">{job.cancellation_reason}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      );
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return <Badge variant="outline">{job.status}</Badge>;
   }
 };
 
@@ -97,7 +114,7 @@ const PrintJobHistoryPanel: React.FC<PrintJobHistoryPanelProps> = ({ printer }) 
                 {jobs.map((job) => (
                   <TableRow key={job.id}>
                     <TableCell className="font-medium truncate max-w-[150px] md:max-w-none">{job.file_name}</TableCell>
-                    <TableCell>{getStatusBadge(job.status)}</TableCell>
+                    <TableCell>{getStatusBadge(job)}</TableCell>
                     <TableCell className="text-right">{formatDuration(job.duration_seconds)}</TableCell>
                     <TableCell className="text-right">{job.material_used_grams?.toFixed(2) || 'N/A'}</TableCell>
                     <TableCell className="text-right">{format(new Date(job.started_at), 'MMM dd, HH:mm')}</TableCell>

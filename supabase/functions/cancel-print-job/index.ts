@@ -22,12 +22,14 @@ serve(async (req) => {
   }
   
   let jobId: string;
+  let reason: string;
   try {
-    const { job_id } = await req.json();
-    if (!job_id) {
-      return new Response(JSON.stringify({ error: "Missing job ID" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const body = await req.json();
+    jobId = body.job_id;
+    reason = body.reason;
+    if (!jobId || !reason) {
+      return new Response(JSON.stringify({ error: "Missing job ID or reason" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    jobId = job_id;
   } catch (e) {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -67,6 +69,7 @@ serve(async (req) => {
     file_name: job.file_name,
     duration_seconds: durationSeconds > 0 ? durationSeconds : 0,
     status: 'cancelled',
+    cancellation_reason: reason,
     started_at: job.assigned_at,
     finished_at: now.toISOString(),
   });

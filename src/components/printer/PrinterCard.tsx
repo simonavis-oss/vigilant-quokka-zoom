@@ -7,7 +7,7 @@ import PrinterStatusDisplay from "./PrinterStatusDisplay";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPrinterStatus, PrinterStatus, pausePrint, cancelActivePrint } from "@/integrations/supabase/functions";
 import { showSuccess, showError } from "@/utils/toast";
-import DeleteConfirmationDialog from "../DeleteConfirmationDialog";
+import CancellationDialog from "../CancellationDialog";
 
 interface PrinterCardProps {
   printer: Printer;
@@ -27,8 +27,6 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
     mutationFn: () => pausePrint(printer.id),
     onSuccess: () => {
       showSuccess(`Pause command sent to ${printer.name}.`);
-      // Note: We don't invalidate here, as the printer's state might not update instantly.
-      // The regular polling will catch the change.
     },
     onError: (err) => {
       showError(`Failed to pause: ${err.message}`);
@@ -36,7 +34,7 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: () => cancelActivePrint(printer.id),
+    mutationFn: ({ printerId, reason }: { printerId: string; reason: string }) => cancelActivePrint(printerId, reason),
     onSuccess: (data) => {
       showSuccess(data.message);
       queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });
@@ -52,6 +50,10 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
     navigate(`/printers/${printer.id}`);
   };
 
+  const handleCancel = (reason: string) => {
+    cancelMutation.mutate({ printerId: printer.id, reason });
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -62,7 +64,6 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
       );
     }
 
-    // isError is true if connection fails, so isOnline is !isError
     const isOnline = !isError;
 
     return (
@@ -85,10 +86,10 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
               {pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
               Pause
             </Button>
-            <DeleteConfirmationDialog
-              onConfirm={() => cancelMutation.mutate()}
+            <CancellationDialog
+              onConfirm={handleCancel}
               title={`Cancel print on ${printer.name}?`}
-              description="This will stop the current print job and move it to your history as 'cancelled'. This action cannot be undone."
+              description="This will stop the current print job and move it to your history. Please provide a reason for the cancellation."
               triggerButton={
                 <Button variant="destructive" size="sm" disabled={cancelMutation.isPending}>
                   {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}

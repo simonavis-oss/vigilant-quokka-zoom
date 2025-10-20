@@ -22,12 +22,14 @@ serve(async (req) => {
   }
   
   let printerId: string;
+  let reason: string;
   try {
-    const { printer_id } = await req.json();
-    if (!printer_id) {
-      return new Response(JSON.stringify({ error: "Missing printer ID" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const body = await req.json();
+    printerId = body.printer_id;
+    reason = body.reason;
+    if (!printerId || !reason) {
+      return new Response(JSON.stringify({ error: "Missing printer ID or reason" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    printerId = printer_id;
   } catch (e) {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -73,6 +75,7 @@ serve(async (req) => {
     file_name: job.file_name,
     duration_seconds: durationSeconds > 0 ? durationSeconds : 0,
     status: 'cancelled',
+    cancellation_reason: reason,
     started_at: job.assigned_at,
     finished_at: now.toISOString(),
   });

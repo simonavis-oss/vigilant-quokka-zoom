@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cancelPrintJob } from "@/integrations/supabase/functions";
 import AssignPrinterDropdown from "./AssignPrinterDropdown";
 import StartPrintButton from "./StartPrintButton";
+import CancellationDialog from "../CancellationDialog";
 
 interface QueueItemActionsProps {
   item: PrintQueueItem;
@@ -36,7 +37,7 @@ const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: cancelPrintJob,
+    mutationFn: ({ jobId, reason }: { jobId: string; reason: string }) => cancelPrintJob(jobId, reason),
     onSuccess: (response) => {
       showSuccess(response.message);
       queryClient.invalidateQueries({ queryKey: ["printQueue"] });
@@ -51,20 +52,20 @@ const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
     deleteMutation.mutate(item.id);
   };
 
-  const handleCancel = () => {
-    cancelMutation.mutate(item.id);
+  const handleCancel = (reason: string) => {
+    cancelMutation.mutate({ jobId: item.id, reason });
   };
 
   const isActionPending = deleteMutation.isPending || cancelMutation.isPending;
 
-  if (item.status === 'assigned') {
+  if (item.status === 'assigned' || item.status === 'printing') {
     return (
       <div className="flex items-center space-x-2">
-        <StartPrintButton item={item} disabled={isActionPending} />
-        <DeleteConfirmationDialog
+        {item.status === 'assigned' && <StartPrintButton item={item} disabled={isActionPending} />}
+        <CancellationDialog
           onConfirm={handleCancel}
           title={`Cancel print job "${item.file_name}"?`}
-          description="This will send a stop command to the printer and move the job to your print history as 'cancelled'. This action cannot be undone."
+          description="This will stop the print and move the job to your history. Please provide a reason for the cancellation below."
           triggerButton={
             <Button variant="outline" size="sm" disabled={isActionPending}>
               {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}

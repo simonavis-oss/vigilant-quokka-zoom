@@ -110,9 +110,9 @@ export const startPrintJob = async (jobId: string): Promise<StartPrintResponse> 
   return data as StartPrintResponse;
 };
 
-export const cancelPrintJob = async (jobId: string): Promise<CancelResponse> => {
+export const cancelPrintJob = async (jobId: string, reason: string): Promise<CancelResponse> => {
   const { data, error } = await supabase.functions.invoke("cancel-print-job", {
-    body: { job_id: jobId },
+    body: { job_id: jobId, reason },
   });
 
   if (error) {
@@ -147,9 +147,9 @@ export const pausePrint = async (printerId: string): Promise<CommandResponse> =>
   return sendPrinterCommand(printerId, "M25");
 };
 
-export const cancelActivePrint = async (printerId: string): Promise<CancelResponse> => {
+export const cancelActivePrint = async (printerId: string, reason: string): Promise<CancelResponse> => {
   const { data, error } = await supabase.functions.invoke("cancel-active-print", {
-    body: { printer_id: printerId },
+    body: { printer_id: printerId, reason },
   });
 
   if (error) {
