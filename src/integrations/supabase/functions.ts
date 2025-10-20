@@ -29,6 +29,11 @@ export interface CancelResponse {
   message: string;
 }
 
+export interface StartPrintResponse {
+  status: "success" | "error";
+  message: string;
+}
+
 export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus> => {
   const { data, error } = await supabase.functions.invoke("printer-status", {
     body: { id: printerId },
@@ -51,9 +56,6 @@ export const sendPrinterCommand = async (printerId: string, command: string): Pr
   });
 
   if (error) {
-    // If the Edge Function returns a non-2xx status (e.g., 500 on mock failure), 
-    // the client throws a generic error. We catch it here and provide a clearer message.
-    // The Edge Function is designed to return a 500 status on mock failure (see step 6 in index.ts).
     if (error.message.includes("non-2xx status code")) {
       throw new Error(`Command failed. The printer API may be unreachable or the command was rejected.`);
     }
@@ -61,23 +63,20 @@ export const sendPrinterCommand = async (printerId: string, command: string): Pr
   }
   
   if (data.status === "error") {
-    // This handles cases where the Edge Function returns a 200 status but contains an application error payload.
     throw new Error(data.message);
   }
 
   return data as CommandResponse;
 };
 
-export const assignPrintJob = async (jobId: string): Promise<AssignmentResponse> => {
+export const assignPrintJob = async (jobId: string, printerId: string): Promise<AssignmentResponse> => {
   const { data, error } = await supabase.functions.invoke("assign-print-job", {
-    body: { job_id: jobId },
+    body: { job_id: jobId, printer_id: printerId },
   });
 
   if (error) {
-    if (error.message.includes("non-2xx status code")) {
-      throw new Error(`Assignment failed. No available printers or API error.`);
-    }
-    throw new Error(`Edge Function Invocation Error: ${error.message}`);
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
   }
   
   if (data.status === "error") {
@@ -85,6 +84,23 @@ export const assignPrintJob = async (jobId: string): Promise<AssignmentResponse>
   }
 
   return data as AssignmentResponse;
+};
+
+export const startPrintJob = async (jobId: string): Promise<StartPrintResponse> => {
+  const { data, error } = await supabase.functions.invoke("start-print-job", {
+    body: { job_id: jobId },
+  });
+
+  if (error) {
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
+  }
+  
+  if (data.status === "error") {
+    throw new Error(data.message);
+  }
+
+  return data as StartPrintResponse;
 };
 
 export const cancelPrintJob = async (jobId: string): Promise<CancelResponse> => {

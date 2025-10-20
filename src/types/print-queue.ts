@@ -7,4 +7,7 @@ export type PrintQueueItem = {
   printer_id: string | null;
   created_at: string;
   assigned_at: string | null;
+  printers: {
+    name: string;
+  } | null;
 };

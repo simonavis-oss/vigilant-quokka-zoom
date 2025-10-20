@@ -148,7 +148,7 @@ const PrintQueuePage: React.FC = () => {
                       <TableCell>{getStatusBadge(job.status)}</TableCell>
                       <TableCell className="flex items-center">
                         <Printer className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {job.printer_id ? `Printer ID: ${job.printer_id.substring(0, 8)}...` : 'N/A'}
+                        {job.printers?.name || 'N/A'}
                       </TableCell>
                       <TableCell>{job.assigned_at ? format(new Date(job.assigned_at), 'MMM dd, HH:mm') : 'N/A'}</TableCell>
                       <TableCell className="text-right">

@@ -3,41 +3,41 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Play, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintQueueItem } from "@/types/print-queue";
-import { assignPrintJob } from "@/integrations/supabase/functions";
+import { startPrintJob } from "@/integrations/supabase/functions";
 import { showSuccess, showError } from "@/utils/toast";
 
-interface AssignPrinterButtonProps {
+interface StartPrintButtonProps {
   item: PrintQueueItem;
   disabled: boolean;
 }
 
-const AssignPrinterButton: React.FC<AssignPrinterButtonProps> = ({ item, disabled }) => {
+const StartPrintButton: React.FC<StartPrintButtonProps> = ({ item, disabled }) => {
   const queryClient = useQueryClient();
   
-  const assignMutation = useMutation({
-    mutationFn: assignPrintJob,
+  const startMutation = useMutation({
+    mutationFn: startPrintJob,
     onSuccess: (response) => {
       showSuccess(response.message);
-      // Invalidate both the queue and the printer status cache
-      queryClient.invalidateQueries({ queryKey: ["printQueue"] });
-      queryClient.invalidateQueries({ queryKey: ["printerStatus"] });
+      // Invalidate printer status to reflect it's now busy
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", item.printer_id] });
+      queryClient.invalidateQueries({ queryKey: ["printerStatus"] }); // General status for dashboard
     },
     onError: (err) => {
       showError(err.message);
     },
   });
 
-  const handleAssign = () => {
-    assignMutation.mutate(item.id);
+  const handleStart = () => {
+    startMutation.mutate(item.id);
   };
 
-  const isPending = assignMutation.isPending;
+  const isPending = startMutation.isPending;
 
   return (
     <Button 
       variant="default" 
       size="sm" 
-      onClick={handleAssign}
+      onClick={handleStart}
       disabled={disabled || isPending}
     >
       {isPending ? (
@@ -45,9 +45,9 @@ const AssignPrinterButton: React.FC<AssignPrinterButtonProps> = ({ item, disable
       ) : (
         <Play className="h-4 w-4 mr-1" />
       )}
-      Assign Printer
+      Start Print
     </Button>
   );
 };
 
-export default AssignPrinterButton;
+export default StartPrintButton;

@@ -101,6 +101,7 @@ const mockPrintQueue: PrintQueueItem[] = [
     printer_id: null,
     created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
     assigned_at: null,
+    printers: null,
   },
   {
     id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12",
@@ -111,6 +112,7 @@ const mockPrintQueue: PrintQueueItem[] = [
     printer_id: null,
     created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
     assigned_at: null,
+    printers: null,
   },
   {
     id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13",
@@ -121,13 +123,17 @@ const mockPrintQueue: PrintQueueItem[] = [
     printer_id: "some-printer-id",
     created_at: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
     assigned_at: new Date(Date.now() - 1800000).toISOString(),
+    printers: { name: "Mock Printer 1" },
   },
 ];
 
 export const fetchPrintQueue = async (userId: string): Promise<PrintQueueItem[]> => {
   const { data, error } = await supabase
     .from("print_queue")
-    .select("*")
+    .select(`
+      *,
+      printers ( name )
+    `)
     .eq("user_id", userId)
     .order("priority", { ascending: false })
     .order("created_at", { ascending: true });

@@ -6,8 +6,9 @@ import { PrintQueueItem } from "@/types/print-queue";
 import { showSuccess, showError } from "@/utils/toast";
 import DeleteConfirmationDialog from "../DeleteConfirmationDialog";
 import { supabase } from "@/integrations/supabase/client";
-import AssignPrinterButton from "./AssignPrinterButton";
 import { cancelPrintJob } from "@/integrations/supabase/functions";
+import AssignPrinterDropdown from "./AssignPrinterDropdown";
+import StartPrintButton from "./StartPrintButton";
 
 interface QueueItemActionsProps {
   item: PrintQueueItem;
@@ -58,36 +59,41 @@ const QueueItemActions: React.FC<QueueItemActionsProps> = ({ item }) => {
 
   if (item.status === 'assigned') {
     return (
-      <DeleteConfirmationDialog
-        onConfirm={handleCancel}
-        title={`Cancel print job "${item.file_name}"?`}
-        description="This will send a stop command to the printer and move the job to your print history as 'cancelled'. This action cannot be undone."
-        triggerButton={
-          <Button variant="destructive" size="sm" disabled={isActionPending}>
-            {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
-            Cancel Job
-          </Button>
-        }
-      />
+      <div className="flex items-center space-x-2">
+        <StartPrintButton item={item} disabled={isActionPending} />
+        <DeleteConfirmationDialog
+          onConfirm={handleCancel}
+          title={`Cancel print job "${item.file_name}"?`}
+          description="This will send a stop command to the printer and move the job to your print history as 'cancelled'. This action cannot be undone."
+          triggerButton={
+            <Button variant="outline" size="sm" disabled={isActionPending}>
+              {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+            </Button>
+          }
+        />
+      </div>
     );
   }
 
-  return (
-    <div className="flex space-x-2">
-      <AssignPrinterButton item={item} disabled={isActionPending} />
-      
-      <DeleteConfirmationDialog
-        onConfirm={handleDelete}
-        title={`Remove "${item.file_name}" from queue?`}
-        description="This will permanently remove the job from the print queue."
-        triggerButton={
-          <Button variant="destructive" size="sm" disabled={isActionPending}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        }
-      />
-    </div>
-  );
+  if (item.status === 'pending') {
+    return (
+      <div className="flex items-center space-x-2">
+        <AssignPrinterDropdown item={item} disabled={isActionPending} />
+        <DeleteConfirmationDialog
+          onConfirm={handleDelete}
+          title={`Remove "${item.file_name}" from queue?`}
+          description="This will permanently remove the job from the print queue."
+          triggerButton={
+            <Button variant="destructive" size="sm" disabled={isActionPending}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default QueueItemActions;
