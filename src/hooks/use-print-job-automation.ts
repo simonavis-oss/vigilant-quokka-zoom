@@ -22,7 +22,14 @@ export const usePrintJobAutomation = (printers: Printer[] | undefined) => {
   const completionMutation = useMutation({
     mutationFn: handlePrintCompletion,
     onSuccess: (data) => {
-      if (data.status === 'noop') return;
+      // Guard against false positives from mock data or unexpected responses
+      if (data.status !== 'success' || !data.completedJobName) {
+        // Log if we get an unexpected success-like status without a name, but don't show a toast.
+        if (data.status !== 'noop') {
+          console.warn("Print completion handler returned success status without a job name.", data);
+        }
+        return;
+      }
 
       let message = `Print "${data.completedJobName}" completed.`;
       if (data.startedJobName) {
