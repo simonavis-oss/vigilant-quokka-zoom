@@ -1,16 +1,18 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPrinterStatus, PrinterStatus } from "@/integrations/supabase/functions";
 import { Progress } from "@/components/ui/progress";
+import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
+import { deletePrinter } from "@/integrations/supabase/mutations";
 
 // --- Data Fetching ---
 
@@ -117,12 +119,31 @@ const PrinterOverviewTab = ({ printerId }: { printerId: string }) => {
 const PrinterDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: printer, isLoading, isError, error } = useQuery<Printer>({
     queryKey: ["printerDetails", id],
     queryFn: () => fetchPrinterDetails(id!),
     enabled: !!id,
   });
+  
+  const deleteMutation = useMutation({
+    mutationFn: deletePrinter,
+    onSuccess: () => {
+      showSuccess(`Printer "${printer?.name}" successfully removed.`);
+      queryClient.invalidateQueries({ queryKey: ["printers"] }); // Invalidate dashboard list
+      navigate("/", { replace: true });
+    },
+    onError: (err) => {
+      showError(err.message);
+    },
+  });
+  
+  const handleDelete = () => {
+    if (id) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -225,7 +246,7 @@ const PrinterDetails = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="settings" className="mt-6">
+        <TabsContent value="settings" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Printer Configuration</CardTitle>
@@ -236,6 +257,32 @@ const PrinterDetails = () => {
               <p className="mt-2 text-muted-foreground">
                 Advanced settings and connection details will be managed here.
               </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Permanently remove this printer from your farm. This action cannot be undone.
+              </p>
+              <DeleteConfirmationDialog
+                onConfirm={handleDelete}
+                title={`Are you absolutely sure?`}
+                description={`This action will permanently delete the printer "${printer.name}" and all associated data. This cannot be undone.`}
+                triggerButton={
+                  <Button variant="destructive" disabled={deleteMutation.isPending}>
+                    {deleteMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                    Delete Printer
+                  </Button>
+                }
+              />
             </CardContent>
           </Card>
         </TabsContent>
