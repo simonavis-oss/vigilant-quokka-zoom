@@ -22,15 +22,10 @@ interface PrinterWebcamPanelProps {
 }
 
 const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
-  // Mock initial URL based on printer name for demonstration
-  const mockInitialUrl = printer.name.includes("Ender") 
-    ? "http://192.168.1.100/webcam/?action=stream" 
-    : "";
-
   const form = useForm<WebcamFormValues>({
     resolver: zodResolver(WebcamSchema),
     defaultValues: {
-      webcam_url: mockInitialUrl,
+      webcam_url: "",
     },
     mode: "onChange",
   });

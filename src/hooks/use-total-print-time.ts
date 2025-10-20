@@ -1,14 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-
-// Mock function to simulate fetching total print time from a backend service
-const fetchTotalPrintTime = async (): Promise<number> => {
-  // Simulate a large number of seconds (e.g., 1500 hours)
-  const totalSeconds = 1500 * 3600 + Math.floor(Math.random() * 3600); 
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-  return totalSeconds;
-};
+import { fetchTotalPrintTime as fetchTotalPrintTimeFromApi } from "@/integrations/supabase/queries";
+import { useSession } from "@/context/SessionContext";
 
 const formatTime = (totalSeconds: number): string => {
+  if (totalSeconds === 0) return "0m";
+  
   const days = Math.floor(totalSeconds / (3600 * 24));
   const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -22,9 +18,13 @@ const formatTime = (totalSeconds: number): string => {
 };
 
 export const useTotalPrintTime = () => {
+  const { user } = useSession();
+  const userId = user?.id;
+
   const { data: totalSeconds, isLoading, isError } = useQuery<number>({
-    queryKey: ["totalPrintTime"],
-    queryFn: fetchTotalPrintTime,
+    queryKey: ["totalPrintTime", userId],
+    queryFn: () => fetchTotalPrintTimeFromApi(userId!),
+    enabled: !!userId,
     staleTime: 60000, // Cache for 1 minute
   });
 
