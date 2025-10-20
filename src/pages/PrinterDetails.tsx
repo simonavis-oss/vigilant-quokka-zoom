@@ -5,11 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPrinterStatus, PrinterStatus, sendPrinterCommand } from "@/integrations/supabase/functions";
+import { getPrinterStatus, PrinterStatus, sendPrinterCommand, pausePrint, cancelActivePrint } from "@/integrations/supabase/functions";
 import { Progress } from "@/components/ui/progress";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import { deletePrinter, updatePrinter } from "@/integrations/supabase/mutations";
@@ -18,6 +18,7 @@ import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
 import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
 import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel";
 import PrintJobHistoryPanel from "@/components/printer/PrintJobHistoryPanel"; // Import new component
+import CancellationDialog from "@/components/CancellationDialog";
 
 // --- Data Fetching ---
 
@@ -39,12 +40,41 @@ const fetchPrinterDetails = async (printerId: string): Promise<Printer> => {
 
 // --- Components ---
 
-const PrinterOverviewTab = ({ printerId }: { printerId: string }) => {
+const PrinterOverviewTab = ({ printerId, printerName }: { printerId: string; printerName: string }) => {
+  const queryClient = useQueryClient();
   const { data: status, isLoading: isStatusLoading, isError: isStatusError } = useQuery<PrinterStatus>({
     queryKey: ["printerStatus", printerId],
     queryFn: () => getPrinterStatus(printerId),
     refetchInterval: 5000, // Poll status every 5 seconds
   });
+
+  const pauseMutation = useMutation({
+    mutationFn: () => pausePrint(printerId),
+    onSuccess: () => {
+      showSuccess(`Pause command sent to ${printerName}.`);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", printerId] });
+    },
+    onError: (err) => {
+      showError(`Failed to pause: ${err.message}`);
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (reason: string) => cancelActivePrint(printerId, reason),
+    onSuccess: (data) => {
+      showSuccess(data.message);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", printerId] });
+      queryClient.invalidateQueries({ queryKey: ["printQueue"] });
+      queryClient.invalidateQueries({ queryKey: ["printJobs"] });
+    },
+    onError: (err) => {
+      showError(`Failed to cancel: ${err.message}`);
+    },
+  });
+
+  const handleCancel = (reason: string) => {
+    cancelMutation.mutate(reason);
+  };
 
   if (isStatusLoading) {
     return (
@@ -113,6 +143,30 @@ const PrinterOverviewTab = ({ printerId }: { printerId: string }) => {
             <p className="text-lg font-bold">{status.bed_temp}</p>
           </div>
         </div>
+
+        {status.is_printing && (
+          <div className="pt-4 border-t grid grid-cols-2 gap-4">
+            <Button 
+              variant="outline"
+              onClick={() => pauseMutation.mutate()}
+              disabled={pauseMutation.isPending || cancelMutation.isPending}
+            >
+              {pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
+              Pause
+            </Button>
+            <CancellationDialog
+              onConfirm={handleCancel}
+              title={`Cancel print on ${printerName}?`}
+              description="This will stop the current print job and move it to your history. Please provide a reason for the cancellation."
+              triggerButton={
+                <Button variant="destructive" disabled={pauseMutation.isPending || cancelMutation.isPending}>
+                  {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                  Cancel
+                </Button>
+              }
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -289,7 +343,7 @@ const PrinterDetails = () => {
         </TabsList>
         
         <TabsContent value="overview" className="mt-6">
-          <PrinterOverviewTab printerId={printer.id} />
+          <PrinterOverviewTab printerId={printer.id} printerName={printer.name} />
         </TabsContent>
         
         <TabsContent value="control" className="mt-6">
