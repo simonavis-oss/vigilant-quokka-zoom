@@ -6,17 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const checkIsPrinterAvailable = (printer: { name: string }): boolean => {
-  console.log(`[Start-Print] Live checking printer: ${printer.name}`);
-  const isConnectionSuccessful = Math.random() > 0.1;
-  if (!isConnectionSuccessful) return false;
-  const isPrinting = Math.random() > 0.5;
-  return !isPrinting;
-};
-
-const mockStartPrint = (printer: any, fileName: string) => {
-  console.log(`[MOCK] Starting print of ${fileName} on ${printer.name}`);
-  return { success: true, message: "Print command sent successfully." };
+const startPrint = async (printer: { base_url: string, api_key: string | null, name: string }, fileName: string) => {
+  try {
+    const encodedFile = encodeURIComponent(fileName);
+    const moonrakerUrl = `${printer.base_url}/printer/print/start?filename=${encodedFile}`;
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (printer.api_key) {
+      headers["X-Api-Key"] = printer.api_key;
+    }
+    const response = await fetch(moonrakerUrl, { method: "POST", headers });
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(errorBody.error.message || `Moonraker API returned status ${response.status}`);
+    }
+    return { success: true, message: "Print command sent successfully." };
+  } catch (error) {
+    console.error(`Failed to send start command to ${printer.name}:`, error.message);
+    throw error;
+  }
 };
 
 serve(async (req) => {
@@ -55,13 +62,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Assigned printer not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  if (!checkIsPrinterAvailable(printer)) {
-    return new Response(JSON.stringify({ error: `${printer.name} is currently busy or offline.` }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
-  const printResult = mockStartPrint(printer, job.file_name);
-  if (!printResult.success) {
-    return new Response(JSON.stringify({ error: `Failed to start print on ${printer.name}.` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  try {
+    await startPrint(printer, job.file_name);
+  } catch (e) {
+    return new Response(JSON.stringify({ error: `Failed to start print on ${printer.name}: ${e.message}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   const { error: updateError } = await supabaseServiceRole

@@ -47,6 +47,12 @@ export interface BulkAssignmentResponse {
   message: string;
 }
 
+export interface PrinterFile {
+  path: string;
+  modified: number;
+  size: number;
+}
+
 export const getPrinterStatus = async (printerId: string): Promise<PrinterStatus> => {
   const { data, error } = await supabase.functions.invoke("printer-status", {
     body: { id: printerId },
@@ -189,4 +195,21 @@ export const bulkAssignPrintJobs = async (jobIds: string[], printerId: string): 
   }
 
   return data as BulkAssignmentResponse;
+};
+
+export const listPrinterFiles = async (printerId: string): Promise<PrinterFile[]> => {
+  const { data, error } = await supabase.functions.invoke("list-printer-files", {
+    body: { id: printerId },
+  });
+
+  if (error) {
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Error: ${error.message}`);
+  }
+  
+  if (data.error) {
+    throw new Error(`List Files Error: ${data.error}`);
+  }
+
+  return data.data as PrinterFile[];
 };

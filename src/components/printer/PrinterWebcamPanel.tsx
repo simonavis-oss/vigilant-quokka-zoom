@@ -1,18 +1,19 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Camera, Save, VideoOff } from "lucide-react";
-import { Printer } from "@/types/printer";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { showSuccess } from "@/utils/toast";
+import { Camera, Save, VideoOff, Loader2 } from "lucide-react";
+import { Printer } from "@/types/printer";
+import { updatePrinter } from "@/integrations/supabase/mutations";
+import { showSuccess, showError } from "@/utils/toast";
 
-// Mock Webcam URL storage (in a real app, this would be stored in the DB/printer object)
 const WebcamSchema = z.object({
-  webcam_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  webcam_url: z.string().url("Must be a valid URL (e.g., http://...)").optional().or(z.literal("")),
 });
 
 type WebcamFormValues = z.infer<typeof WebcamSchema>;
@@ -22,19 +23,31 @@ interface PrinterWebcamPanelProps {
 }
 
 const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
+  const queryClient = useQueryClient();
+  
   const form = useForm<WebcamFormValues>({
     resolver: zodResolver(WebcamSchema),
     defaultValues: {
-      webcam_url: "",
+      webcam_url: printer.webcam_url || "",
     },
     mode: "onChange",
   });
 
+  const updateMutation = useMutation({
+    mutationFn: updatePrinter,
+    onSuccess: () => {
+      showSuccess("Webcam URL updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["printerDetails", printer.id] });
+    },
+    onError: (err) => {
+      showError(err.message);
+    },
+  });
+
   const onSubmit = (data: WebcamFormValues) => {
-    // In a real application, this would update the printer's webcam_url field in the database
-    console.log("Saving webcam URL:", data.webcam_url);
-    showSuccess(`Webcam URL saved for ${printer.name}.`);
-    form.reset(data); // Reset form state to reflect saved data
+    if (data.webcam_url !== printer.webcam_url) {
+      updateMutation.mutate({ id: printer.id, webcam_url: data.webcam_url || null });
+    }
   };
 
   const webcamUrl = form.watch("webcam_url");
@@ -51,13 +64,13 @@ const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
         <CardContent>
           <div className="aspect-video w-full bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
             {isUrlSet ? (
-              // In a real app, this would be an <img> or <video> tag pointing to the stream URL
-              <div className="text-center p-4">
-                <Camera className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Live stream placeholder. URL: {webcamUrl}
-                </p>
-              </div>
+              <img 
+                src={webcamUrl} 
+                alt="Webcam Stream" 
+                className="w-full h-full object-contain"
+                // Add an error handler in case the stream URL is broken
+                onError={(e) => (e.currentTarget.style.display = 'none')}
+              />
             ) : (
               <div className="text-center p-4">
                 <VideoOff className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
@@ -95,9 +108,14 @@ const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
               />
               <Button 
                 type="submit" 
-                disabled={!form.formState.isDirty || !form.formState.isValid}
+                disabled={!form.formState.isDirty || !form.formState.isValid || updateMutation.isPending}
               >
-                <Save className="mr-2 h-4 w-4" /> Save Webcam Settings
+                {updateMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Save Webcam Settings
               </Button>
             </form>
           </Form>

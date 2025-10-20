@@ -6,9 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const mockStartPrint = (printer: any, fileName: string) => {
-  console.log(`[MOCK-AUTO-START] Starting print of ${fileName} on ${printer.name}`);
-  return { success: true };
+const startPrint = async (printer: { base_url: string, api_key: string | null, name: string }, fileName: string) => {
+  try {
+    const encodedFile = encodeURIComponent(fileName);
+    const moonrakerUrl = `${printer.base_url}/printer/print/start?filename=${encodedFile}`;
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (printer.api_key) {
+      headers["X-Api-Key"] = printer.api_key;
+    }
+    const response = await fetch(moonrakerUrl, { method: "POST", headers });
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(errorBody.error.message || `Moonraker API returned status ${response.status}`);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error(`Failed to auto-start print on ${printer.name}:`, error.message);
+    return { success: false };
+  }
 };
 
 serve(async (req) => {
@@ -75,12 +90,16 @@ serve(async (req) => {
     return new Response(JSON.stringify({ status: "success", completedJobName: completedJob.file_name, startedJobName: null }), { status: 200, headers: corsHeaders });
   }
 
-  const { data: printer } = await supabaseServiceRole.from("printers").select("name").eq("id", printerId).single();
-  const startResult = mockStartPrint(printer, nextJob.file_name);
+  const { data: printer } = await supabaseServiceRole.from("printers").select("name, base_url, api_key").eq("id", printerId).single();
+  if (!printer) {
+    return new Response(JSON.stringify({ status: "error", message: "Printer not found for auto-start." }), { status: 404, headers: corsHeaders });
+  }
+
+  const startResult = await startPrint(printer, nextJob.file_name);
 
   if (!startResult.success) {
     await supabaseServiceRole.from("print_queue").update({ status: 'failed' }).eq("id", nextJob.id);
-    return new Response(JSON.stringify({ status: "error", completedJobName: completedJob.file_name, startedJobName: null }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ status: "error", completedJobName: completedJob.file_name, startedJobName: null, message: "Failed to auto-start next job." }), { status: 500, headers: corsHeaders });
   }
 
   await supabaseServiceRole.from("print_queue").update({ status: 'printing', assigned_at: new Date().toISOString() }).eq("id", nextJob.id);

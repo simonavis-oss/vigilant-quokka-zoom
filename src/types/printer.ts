@@ -7,4 +7,5 @@ export type Printer = {
   api_key: string | null;
   is_online: boolean;
   created_at: string;
+  webcam_url: string | null;
 };
