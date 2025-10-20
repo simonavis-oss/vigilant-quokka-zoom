@@ -44,30 +44,15 @@ const validateUrlOrIp = (val: string) => {
 
 const PrinterSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "octoprint", "klipper_go", "obico"], {
+  connection_type: z.enum(["moonraker", "octoprint", "klipper_go"], {
     required_error: "Please select a connection type.",
   }),
-  base_url: z.string().optional(),
+  base_url: z.string()
+    .min(1, "Printer address is required.")
+    .refine(validateUrlOrIp, {
+      message: "Must be a valid URL or IP address (e.g., 192.168.1.100:7125).",
+    }),
   api_key: z.string().optional(),
-  cloud_printer_id: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (["moonraker", "octoprint"].includes(data.connection_type)) {
-    if (!data.base_url || !validateUrlOrIp(data.base_url)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "A valid URL or IP address is required for this connection type.",
-        path: ["base_url"],
-      });
-    }
-  }
-  if (data.connection_type === "obico") {
-    if (!data.api_key) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Obico API Key is required.", path: ["api_key"] });
-    }
-    if (!data.cloud_printer_id) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Obico Printer ID is required.", path: ["cloud_printer_id"] });
-    }
-  }
 });
 
 type PrinterFormValues = z.infer<typeof PrinterSchema>;
@@ -85,7 +70,6 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
       connection_type: "moonraker",
       base_url: "",
       api_key: "",
-      cloud_printer_id: "",
     },
     mode: "onChange",
   });
@@ -99,8 +83,9 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
       return;
     }
 
+    // Manually ensure the URL has a protocol before saving to DB
     let finalBaseUrl = data.base_url;
-    if (finalBaseUrl && !finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
+    if (!finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
       finalBaseUrl = `http://${finalBaseUrl}`;
     }
 
@@ -108,9 +93,8 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
       user_id: user.id,
       name: data.name,
       connection_type: data.connection_type,
-      base_url: finalBaseUrl || null,
+      base_url: finalBaseUrl, // Use the protocol-prefixed URL for DB storage
       api_key: data.api_key || null,
-      cloud_printer_id: data.cloud_printer_id || null,
     });
 
     if (error) {
@@ -160,10 +144,9 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="moonraker">Moonraker / Mainsail / Fluid (Local)</SelectItem>
-                      <SelectItem value="octoprint">OctoPrint (Local)</SelectItem>
-                      <SelectItem value="obico">Obico (Cloud)</SelectItem>
-                      <SelectItem value="klipper_go" disabled>Klipper Go (Future Support)</SelectItem>
+                      <SelectItem value="moonraker">Moonraker / Mainsail / Fluid (Recommended)</SelectItem>
+                      <SelectItem value="octoprint">OctoPrint</SelectItem>
+                      <SelectItem value="klipper_go">Klipper Go / Marlin (Future Support)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -171,21 +154,19 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
               )}
             />
             
-            {["moonraker", "octoprint"].includes(connectionType) && (
-              <FormField
-                control={form.control}
-                name="base_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Printer Address (URL/IP)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="base_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Printer Address (URL/IP)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             {connectionType === "octoprint" && (
               <FormField
@@ -201,37 +182,6 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                   </FormItem>
                 )}
               />
-            )}
-
-            {connectionType === "obico" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="api_key"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Obico API Key</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter your Obico API key" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="cloud_printer_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Obico Printer ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter the Printer ID from Obico" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
             )}
 
             <Button 
