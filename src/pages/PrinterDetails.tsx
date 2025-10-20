@@ -5,10 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPrinterStatus, PrinterStatus } from "@/integrations/supabase/functions";
+import { Progress } from "@/components/ui/progress";
+
+// --- Data Fetching ---
 
 const fetchPrinterDetails = async (printerId: string): Promise<Printer> => {
   const { data, error } = await supabase
@@ -26,12 +30,96 @@ const fetchPrinterDetails = async (printerId: string): Promise<Printer> => {
   return data as Printer;
 };
 
+// --- Components ---
+
+const PrinterOverviewTab = ({ printerId }: { printerId: string }) => {
+  const { data: status, isLoading: isStatusLoading, isError: isStatusError } = useQuery<PrinterStatus>({
+    queryKey: ["printerStatus", printerId],
+    queryFn: () => getPrinterStatus(printerId),
+    refetchInterval: 5000, // Poll status every 5 seconds
+  });
+
+  if (isStatusLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Real-time Status</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center space-x-2">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <p>Connecting to printer...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isStatusError || !status) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Real-time Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-destructive">Connection Error</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Could not retrieve status from the printer. Check the connection URL in settings.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  const statusText = status.is_printing ? `Printing (${status.progress}%)` : "Idle";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Real-time Status</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="font-medium">Status</p>
+            <p className="text-lg font-bold">{statusText}</p>
+          </div>
+          <div>
+            <p className="font-medium">File</p>
+            <p className="text-lg font-bold truncate">{status.file_name}</p>
+          </div>
+        </div>
+
+        {status.is_printing && (
+          <div className="space-y-2">
+            <p className="font-medium">Progress</p>
+            <Progress value={status.progress} className="w-full" />
+            <p className="text-sm text-muted-foreground">{status.time_remaining} remaining</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4 border-t pt-4">
+          <div>
+            <p className="font-medium">Nozzle Temp</p>
+            <p className="text-lg font-bold">{status.nozzle_temp}</p>
+          </div>
+          <div>
+            <p className="font-medium">Bed Temp</p>
+            <p className="text-lg font-bold">{status.bed_temp}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+
+// --- Main Page Component ---
+
 const PrinterDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const { data: printer, isLoading, isError, error } = useQuery<Printer>({
-    queryKey: ["printer", id],
+    queryKey: ["printerDetails", id],
     queryFn: () => fetchPrinterDetails(id!),
     enabled: !!id,
   });
@@ -107,17 +195,7 @@ const PrinterDetails = () => {
         </TabsList>
         
         <TabsContent value="overview" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Real-time Status (Mock)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Printer Status: {printer.is_online ? "Connected" : "Disconnected"}</p>
-              <p className="mt-2 text-muted-foreground">
-                This section will eventually display live data, print progress, and AI detection status.
-              </p>
-            </CardContent>
-          </Card>
+          <PrinterOverviewTab printerId={printer.id} />
         </TabsContent>
         
         <TabsContent value="control" className="mt-6">
