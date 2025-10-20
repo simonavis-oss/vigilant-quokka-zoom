@@ -192,6 +192,7 @@ const PrinterConnectionWizard = ({ onPrinterAdded }: { onPrinterAdded: () => voi
   const baseUrlValue = form.watch("base_url");
 
   // Step 1 is valid if both fields have values and no errors
+  // We rely on Zod/RHF to manage errors, but check for presence of values
   const isStep1Valid = !!nameValue && !!typeValue && !errors.name && !errors.connection_type;
   
   // Step 2 is valid if base_url has a value and no error (api_key is optional)
