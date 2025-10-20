@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import { deletePrinter, updatePrinter } from "@/integrations/supabase/mutations";
 import PrinterEditForm from "@/components/printer/PrinterEditForm";
+import PrinterControlPanel from "@/components/printer/PrinterControlPanel"; // Import the new component
 
 // --- Data Fetching ---
 
@@ -253,17 +254,7 @@ const PrinterDetails = () => {
         </TabsContent>
         
         <TabsContent value="control" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Printer Control (Mock)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Here you will find controls for movement, heating, and starting/stopping prints.
-              </p>
-              <Button className="mt-4">Send G-Code</Button>
-            </CardContent>
-          </Card>
+          <PrinterControlPanel printer={printer} />
         </TabsContent>
         
         <TabsContent value="webcam" className="mt-6">
