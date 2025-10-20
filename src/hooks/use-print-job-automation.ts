@@ -45,8 +45,8 @@ export const usePrintJobAutomation = (printers: Printer[] | undefined) => {
         description: `Printer: ${data.completedJob.printer_name}. Please confirm the bed is clear to start the next print.`,
         duration: Infinity, // Persist until dismissed or action is taken
         action: (
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             onClick={() => {
               clearBedMutation.mutate(data.completedJob!.id);
               toast.dismiss();
