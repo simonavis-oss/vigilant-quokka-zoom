@@ -4,8 +4,6 @@ import { getPrinterStatus, handlePrintCompletion, confirmBedCleared } from "@/in
 import { useEffect, useRef } from "react";
 import { showSuccess, showError } from "@/utils/toast";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
 
 type PrinterStatuses = { [printerId: string]: { is_printing: boolean } };
 
@@ -44,19 +42,12 @@ export const usePrintJobAutomation = (printers: Printer[] | undefined) => {
       toast.info(`Print finished: ${data.completedJob.file_name}`, {
         description: `Printer: ${data.completedJob.printer_name}. Please confirm the bed is clear to start the next print.`,
         duration: Infinity, // Persist until dismissed or action is taken
-        action: (
-          <Button
-            size="sm"
-            onClick={() => {
-              clearBedMutation.mutate(data.completedJob!.id);
-              toast.dismiss();
-            }}
-            disabled={clearBedMutation.isPending}
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Confirm Bed Cleared
-          </Button>
-        ),
+        action: {
+          label: "Confirm Bed Cleared",
+          onClick: () => {
+            clearBedMutation.mutate(data.completedJob!.id);
+          },
+        },
       });
 
       queryClient.invalidateQueries({ queryKey: ["printQueue"] });
