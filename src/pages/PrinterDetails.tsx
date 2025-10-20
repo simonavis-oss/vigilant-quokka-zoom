@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -152,6 +152,16 @@ const PrinterDetails = () => {
     },
   });
   
+  const testConnectionMutation = useMutation({
+    mutationFn: getPrinterStatus,
+    onSuccess: (status) => {
+      showSuccess(`Connection successful! Printer is currently ${status.is_printing ? 'printing' : 'idle'}.`);
+    },
+    onError: (err) => {
+      showError(`Connection failed: ${err.message}`);
+    },
+  });
+  
   const handleUpdate = (updates: Partial<Printer>) => {
     updateMutation.mutate(updates);
   };
@@ -159,6 +169,12 @@ const PrinterDetails = () => {
   const handleDelete = () => {
     if (id) {
       deleteMutation.mutate(id);
+    }
+  };
+  
+  const handleTestConnection = () => {
+    if (id) {
+      testConnectionMutation.mutate(id);
     }
   };
 
@@ -274,6 +290,24 @@ const PrinterDetails = () => {
                 onSubmit={handleUpdate} 
                 isSubmitting={updateMutation.isPending} 
               />
+              
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="text-lg font-semibold mb-2">Connection Test</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Verify that the application can successfully communicate with your printer using the current settings.
+                </p>
+                <Button 
+                  onClick={handleTestConnection} 
+                  disabled={testConnectionMutation.isPending}
+                >
+                  {testConnectionMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                  )}
+                  Test Connection
+                </Button>
+              </div>
             </CardContent>
           </Card>
           
