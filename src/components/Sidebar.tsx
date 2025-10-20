@@ -14,7 +14,7 @@ const navItems = [
   },
   {
     title: "Printers",
-    href: "/printers", // Placeholder for a future dedicated printer list page, currently redirects to dashboard
+    href: "/", // Changed from "/printers" to "/" since the dashboard is the printer list
     icon: Printer,
   },
   {
