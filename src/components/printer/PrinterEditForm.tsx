@@ -13,13 +13,6 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Printer } from "@/types/printer";
 import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -66,27 +59,16 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
   });
 
   const handleSubmit = (data: PrinterFormValues) => {
-    const updates: Partial<Printer> = { id: printer.id };
-    
-    if (data.name !== printer.name) updates.name = data.name;
-    if (data.base_url !== printer.base_url) updates.base_url = data.base_url;
-    if (data.ai_failure_detection_enabled !== printer.ai_failure_detection_enabled) {
-      updates.ai_failure_detection_enabled = data.ai_failure_detection_enabled;
-    }
-    
-    const newApiKey = data.api_key || null;
-    if (newApiKey !== printer.api_key) updates.api_key = newApiKey;
-
-    // connection_type is fixed to 'moonraker' now, no need to check or update it
-    updates.connection_type = 'moonraker';
-
-    if (Object.keys(updates).length > 1) {
-      onSubmit(updates);
-    }
+    // The `data` object is the validated form output.
+    // We just need to add the printer's ID and ensure api_key is null if empty.
+    const updatePayload: Partial<Printer> = {
+      ...data,
+      id: printer.id,
+      api_key: data.api_key || null,
+    };
+    onSubmit(updatePayload);
   };
   
-  const connectionType = form.watch("connection_type");
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
