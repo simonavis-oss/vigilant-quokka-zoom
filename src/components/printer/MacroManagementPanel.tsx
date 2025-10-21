@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, PlusCircle, Trash2, Loader2, TerminalSquare } from "lucide-react";
+import { Play, PlusCircle, Trash2, Loader2, TerminalSquare, Sparkles } from "lucide-react";
 import { Printer } from "@/types/printer";
 import { PrinterMacro } from "@/types/printer-macro";
 import { fetchPrinterMacros } from "@/integrations/supabase/queries";
@@ -29,6 +29,15 @@ const MacroSchema = z.object({
 });
 type MacroFormValues = z.infer<typeof MacroSchema>;
 
+const COMMON_MACROS = [
+  { name: "Preheat PLA", gcode: "M140 S60 ; Set bed temperature\nM104 S200 ; Set nozzle temperature" },
+  { name: "Preheat PETG", gcode: "M140 S80 ; Set bed temperature\nM104 S240 ; Set nozzle temperature" },
+  { name: "Cooldown", gcode: "M104 S0 ; Turn off nozzle heater\nM140 S0 ; Turn off bed heater\nM107 ; Turn off part cooling fan" },
+  { name: "Load Filament", gcode: "M109 S210 ; Set nozzle to 210C and wait\nG92 E0 ; Reset extruder\nG1 E100 F300 ; Extrude 100mm of filament\nG92 E0 ; Reset extruder again" },
+  { name: "Unload Filament", gcode: "M109 S210 ; Set nozzle to 210C and wait\nG92 E0 ; Reset extruder\nG1 E-5 F1800 ; Retract 5mm quickly\nG1 E-100 F300 ; Retract 100mm slowly\nG92 E0 ; Reset extruder again" },
+  { name: "Disable Steppers", gcode: "M84 ; Disable all stepper motors" },
+];
+
 const MacroManagementPanel: React.FC<MacroManagementPanelProps> = ({ printer }) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -48,10 +57,7 @@ const MacroManagementPanel: React.FC<MacroManagementPanelProps> = ({ printer }) 
   const insertMutation = useMutation({
     mutationFn: insertPrinterMacro,
     onSuccess: () => {
-      showSuccess("Macro created successfully!");
       queryClient.invalidateQueries({ queryKey: ["printerMacros", printer.id] });
-      setIsDialogOpen(false);
-      form.reset();
     },
     onError: (err) => showError(err.message),
   });
@@ -67,7 +73,7 @@ const MacroManagementPanel: React.FC<MacroManagementPanelProps> = ({ printer }) 
 
   const runMutation = useMutation({
     mutationFn: (gcode: string) => sendPrinterCommand(printer, gcode),
-    onSuccess: (data, gcode) => {
+    onSuccess: () => {
       showSuccess(`Macro executed successfully.`);
     },
     onError: (err) => showError(err.message),
@@ -76,12 +82,45 @@ const MacroManagementPanel: React.FC<MacroManagementPanelProps> = ({ printer }) 
 
   const onSubmit = (data: MacroFormValues) => {
     if (!user) return showError("Not authenticated.");
-    insertMutation.mutate({ ...data, printer_id: printer.id, user_id: user.id });
+    insertMutation.mutate({ ...data, printer_id: printer.id, user_id: user.id }, {
+      onSuccess: () => {
+        showSuccess("Macro created successfully!");
+        setIsDialogOpen(false);
+        form.reset();
+      }
+    });
   };
 
   const handleRunMacro = (macro: PrinterMacro) => {
     setRunningMacroId(macro.id);
     runMutation.mutate(macro.gcode);
+  };
+
+  const handleGenerateCommonMacros = async () => {
+    if (!user) return showError("Not authenticated.");
+    
+    const existingMacroNames = macros?.map(m => m.name) || [];
+    const macrosToAdd = COMMON_MACROS.filter(cm => !existingMacroNames.includes(cm.name));
+
+    if (macrosToAdd.length === 0) {
+      showSuccess("All common macros already exist.");
+      return;
+    }
+
+    const promises = macrosToAdd.map(macro => 
+      insertMutation.mutateAsync({
+        ...macro,
+        printer_id: printer.id,
+        user_id: user.id,
+      })
+    );
+
+    try {
+      await Promise.all(promises);
+      showSuccess(`Added ${macrosToAdd.length} common macros.`);
+    } catch (error) {
+      showError("An error occurred while adding macros.");
+    }
   };
 
   return (
@@ -92,19 +131,24 @@ const MacroManagementPanel: React.FC<MacroManagementPanelProps> = ({ printer }) 
             <CardTitle className="flex items-center"><TerminalSquare className="h-5 w-5 mr-2" /> Custom Macros</CardTitle>
             <CardDescription>Create and run custom G-code scripts.</CardDescription>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild><Button size="sm"><PlusCircle className="h-4 w-4 mr-2" /> Add Macro</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Create New Macro</DialogTitle></DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                  <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Macro Name</FormLabel><FormControl><Input placeholder="e.g., Load Filament" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="gcode" render={({ field }) => (<FormItem><FormLabel>G-Code Script</FormLabel><FormControl><Textarea placeholder="G28 ; Home all axes&#10;M109 S210 ; Set nozzle temp and wait" {...field} className="font-mono" rows={5} /></FormControl><FormMessage /></FormItem>)} />
-                  <DialogFooter><Button type="submit" disabled={insertMutation.isPending}>{insertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Macro"}</Button></DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center space-x-2">
+            <Button size="sm" variant="outline" onClick={handleGenerateCommonMacros} disabled={insertMutation.isPending}>
+              <Sparkles className="h-4 w-4 mr-2" /> Add Common Macros
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild><Button size="sm"><PlusCircle className="h-4 w-4 mr-2" /> Add Macro</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Create New Macro</DialogTitle></DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                    <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Macro Name</FormLabel><FormControl><Input placeholder="e.g., Load Filament" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="gcode" render={({ field }) => (<FormItem><FormLabel>G-Code Script</FormLabel><FormControl><Textarea placeholder="G28 ; Home all axes&#10;M109 S210 ; Set nozzle temp and wait" {...field} className="font-mono" rows={5} /></FormControl><FormMessage /></FormItem>)} />
+                    <DialogFooter><Button type="submit" disabled={insertMutation.isPending}>{insertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Macro"}</Button></DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
