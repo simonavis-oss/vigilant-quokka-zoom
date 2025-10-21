@@ -46,8 +46,12 @@ const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
   });
 
   const onSubmit = (data: WebcamFormValues) => {
-    if (data.webcam_url !== printer.webcam_url) {
-      updateMutation.mutate({ id: printer.id, webcam_url: data.webcam_url || null });
+    // Convert empty string to null for database storage
+    const newUrl = data.webcam_url || null;
+    const currentUrl = printer.webcam_url || null;
+
+    if (newUrl !== currentUrl) {
+      updateMutation.mutate({ id: printer.id, webcam_url: newUrl });
     }
   };
 
