@@ -18,6 +18,22 @@ export const updatePrinter = async (printer: Partial<Printer>): Promise<void> =>
   if (error) throw new Error(`Failed to update printer: ${error.message}`);
 };
 
+export const fetchPrinterDetails = async (printerId: string): Promise<Printer> => {
+  const { data, error } = await supabase
+    .from("printers")
+    .select("*")
+    .eq("id", printerId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to fetch printer details: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error("Printer not found.");
+  }
+  return data as Printer;
+};
+
 export const updateProfile = async (profile: Partial<Profile>): Promise<void> => {
   const { id, ...updates } = profile;
   if (!id) throw new Error("Profile ID is required for update.");
