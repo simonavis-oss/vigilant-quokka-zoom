@@ -18,7 +18,7 @@ import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
 import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
 import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel";
 import PrintJobHistoryPanel from "@/components/printer/PrintJobHistoryPanel";
-import CancellationDialog from "../CancellationDialog";
+import CancellationDialog from "@/components/CancellationDialog";
 import MaintenanceLogPanel from "@/components/printer/MaintenanceLogPanel";
 import { Badge } from "@/components/ui/badge";
 
