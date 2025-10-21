@@ -1,8 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
-import { Profile } from "./queries"; // Import Profile type
+import { Profile } from "./queries";
 import { MaintenanceLog } from "@/types/maintenance";
 import { PrinterMacro } from "@/types/printer-macro";
+import { Material } from "@/types/material"; // Import new type
 
 export const deletePrinter = async (printerId: string): Promise<void> => {
   const { error } = await supabase
@@ -109,5 +110,55 @@ export const deletePrinterMacro = async (macroId: string): Promise<void> => {
 
   if (error) {
     throw new Error(`Failed to delete macro: ${error.message}`);
+  }
+};
+
+interface NewMaterial {
+  user_id: string;
+  name: string;
+  type: string;
+  color: string | null;
+  density_g_cm3: number;
+  cost_per_kg: number;
+}
+
+export const insertMaterial = async (material: NewMaterial): Promise<Material> => {
+  const { data, error } = await supabase
+    .from("materials")
+    .insert(material)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to insert material: ${error.message}`);
+  }
+  return data as Material;
+};
+
+export const updateMaterial = async (material: Partial<Material>): Promise<void> => {
+  const { id, ...updates } = material;
+  
+  if (!id) {
+    throw new Error("Material ID is required for update.");
+  }
+
+  const { error } = await supabase
+    .from("materials")
+    .update(updates)
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Failed to update material: ${error.message}`);
+  }
+};
+
+export const deleteMaterial = async (materialId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("materials")
+    .delete()
+    .eq("id", materialId);
+
+  if (error) {
+    throw new Error(`Failed to delete material: ${error.message}`);
   }
 };

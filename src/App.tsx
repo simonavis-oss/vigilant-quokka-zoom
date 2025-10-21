@@ -13,7 +13,8 @@ import PrinterDetails from "./pages/PrinterDetails";
 import ProfilePage from "./pages/Profile";
 import PrintQueuePage from "./pages/PrintQueue";
 import PrintersPage from "./pages/Printers";
-import FailureAlertsPage from "./pages/FailureAlertsPage"; // Import new page
+import FailureAlertsPage from "./pages/FailureAlertsPage";
+import MaterialsPage from "./pages/MaterialsPage"; // Import new page
 
 const queryClient = new QueryClient();
 
@@ -35,7 +36,8 @@ const App = () => (
                 <Route path="/printers/:id" element={<PrinterDetails />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/queue" element={<PrintQueuePage />} />
-                <Route path="/alerts" element={<FailureAlertsPage />} /> {/* New Route */}
+                <Route path="/alerts" element={<FailureAlertsPage />} />
+                <Route path="/materials" element={<MaterialsPage />} /> {/* New Route */}
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               </Route>
 

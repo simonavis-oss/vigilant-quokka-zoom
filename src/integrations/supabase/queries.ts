@@ -3,7 +3,8 @@ import { PrintJob } from "@/types/print-job";
 import { PrintQueueItem } from "@/types/print-queue";
 import { Printer } from "@/types/printer";
 import { MaintenanceLog } from "@/types/maintenance";
-import { PrinterMacro } from "@/types/printer-macro"; // Import new type
+import { PrinterMacro } from "@/types/printer-macro";
+import { Material } from "@/types/material"; // Import new type
 
 export interface Profile {
   id: string;
@@ -173,4 +174,20 @@ export const fetchPrinterMacros = async (printerId: string): Promise<PrinterMacr
     throw new Error(error.message);
   }
   return data as PrinterMacro[];
+};
+
+export const fetchMaterials = async (userId: string): Promise<Material[]> => {
+  const { data, error } = await supabase
+    .from("materials")
+    .select("*")
+    .eq("user_id", userId)
+    .order("name", { ascending: true });
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return [];
+    }
+    throw new Error(error.message);
+  }
+  return data as Material[];
 };
