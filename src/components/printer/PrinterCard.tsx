@@ -1,13 +1,31 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Printer } from "@/types/printer";
-import { Settings, Printer as PrinterIcon, Loader2, Pause, XCircle, Play } from "lucide-react";
+import { Settings, Printer as PrinterIcon, Loader2, Pause, XCircle, Play, MoreVertical, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import PrinterStatusDisplay from "./PrinterStatusDisplay";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getPrinterStatus, PrinterStatus, pausePrint, resumePrint, cancelActivePrint } from "@/integrations/supabase/functions";
+import { getPrinterStatus, PrinterStatus, pausePrint, resumePrint, cancelActivePrint, sendPrinterCommand } from "@/integrations/supabase/functions";
 import { showSuccess, showError } from "@/utils/toast";
 import CancellationDialog from "../CancellationDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface PrinterCardProps {
   printer: Printer;
@@ -57,6 +75,17 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
       showError(`Failed to cancel: ${err.message}`);
     },
   });
+
+  const emergencyStopMutation = useMutation({
+    mutationFn: () => sendPrinterCommand(printer, "M112"),
+    onSuccess: () => {
+      showSuccess(`Emergency Stop command sent to ${printer.name}.`);
+      queryClient.invalidateQueries({ queryKey: ["printerStatus", printer.id] });
+    },
+    onError: (err) => {
+      showError(`Emergency Stop failed: ${err.message}`);
+    },
+  });
   
   const handleManageClick = () => {
     navigate(`/printers/${printer.id}`);
@@ -73,6 +102,48 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
           <PrinterIcon className="h-5 w-5 text-primary" />
           <CardTitle className="text-lg font-semibold">{printer.name}</CardTitle>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleManageClick}>
+              <Settings className="mr-2 h-4 w-4" />
+              Manage Printer
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={(e) => e.preventDefault()} // Prevents dropdown from closing
+                >
+                  <Zap className="mr-2 h-4 w-4" />
+                  Emergency Stop
+                </DropdownMenuItem>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will immediately halt all printer operations and may require a restart. Use only in emergencies.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => emergencyStopMutation.mutate()}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    Confirm E-Stop
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </CardHeader>
       
       <CardContent className="flex-grow space-y-3">
@@ -133,12 +204,6 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
           />
         </div>
       )}
-
-      <div className="p-4 border-t mt-auto">
-        <Button variant="secondary" className="w-full" onClick={handleManageClick}>
-          <Settings className="mr-2 h-4 w-4" /> Manage Printer
-        </Button>
-      </div>
     </Card>
   );
 };
