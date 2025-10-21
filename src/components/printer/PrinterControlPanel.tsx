@@ -92,11 +92,6 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader><CardTitle className="flex items-center"><Thermometer className="h-5 w-5 mr-2" /> Temperature Controls</CardTitle></CardHeader>
-        <CardContent><PreheatDropdown printer={printer} /></CardContent>
-      </Card>
-      
-      <Card>
         <CardHeader><CardTitle className="flex items-center"><Move className="h-5 w-5 mr-2" /> Manual Control</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-2">
@@ -134,9 +129,15 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
                 </div>
               </div>
             </div>
-            <div className="pt-4 border-t flex justify-center space-x-2">
-              <Button variant="secondary" onClick={handleQuickCommand("G28")} disabled={isSending}><Home className="h-4 w-4 mr-2" /> Home All Axes</Button>
-              <Button variant="secondary" onClick={handleQuickCommand("M84")} disabled={isSending}><Zap className="h-4 w-4 mr-2" /> Disable Steppers</Button>
+            <div className="pt-4 border-t flex flex-col items-center space-y-4">
+              <div className="flex justify-center space-x-2">
+                <Button variant="secondary" onClick={handleQuickCommand("G28")} disabled={isSending}><Home className="h-4 w-4 mr-2" /> Home All Axes</Button>
+                <Button variant="secondary" onClick={handleQuickCommand("M84")} disabled={isSending}><Zap className="h-4 w-4 mr-2" /> Disable Steppers</Button>
+              </div>
+              <div className="flex flex-col items-center space-y-1">
+                <Label className="text-sm font-medium text-muted-foreground">Temperature</Label>
+                <PreheatDropdown printer={printer} />
+              </div>
             </div>
           </div>
         </CardContent>
