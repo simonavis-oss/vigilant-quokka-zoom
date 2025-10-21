@@ -18,22 +18,45 @@ import { Loader2, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import DeleteConfirmationDialog from "../DeleteConfirmationDialog";
 
+// Helper function to validate URL/IP (copied from AddPrinterForm for consistency)
+const validateUrlOrIp = (val: string) => {
+  if (!val) return false;
+  let urlToTest = val;
+  
+  // Check if it looks like a URL (has a protocol)
+  if (urlToTest.startsWith('http://') || urlToTest.startsWith('https://')) {
+    try {
+      new URL(urlToTest);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  
+  // If no protocol, assume it's a hostname or IP with port, and check if it contains a dot or port
+  if (urlToTest.includes('.') || urlToTest.includes(':')) {
+    return true;
+  }
+  
+  return false;
+};
+
 // --- Schemas ---
 
 const PrinterEditSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
   connection_type: z.literal("moonraker"),
-  base_url: z.preprocess(
-    (val) => {
-      if (typeof val === 'string' && val.length > 0 && !val.startsWith('http://') && !val.startsWith('https://')) {
-        return `http://${val}`;
-      }
-      return val;
-    },
-    z.string().url("Must be a valid URL or IP address (e.g., http://192.168.1.100:7125)")
-  ),
+  base_url: z.string().min(1, "Printer address is required."),
   api_key: z.string().optional(),
   ai_failure_detection_enabled: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  if (!validateUrlOrIp(data.base_url)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["base_url"],
+      message: "Must be a valid URL or IP address (e.g., http://192.168.1.100:7125).",
+    });
+  }
 });
 
 type PrinterFormValues = z.infer<typeof PrinterEditSchema>;
@@ -66,6 +89,7 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, on
     if (data.name !== printer.name) {
       updates.name = data.name;
     }
+    // Save base_url exactly as entered
     if (data.base_url !== printer.base_url) {
       updates.base_url = data.base_url;
     }
@@ -120,7 +144,7 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, on
             <FormItem>
               <FormLabel>Printer Address (URL/IP)</FormLabel>
               <FormControl>
-                <Input placeholder="E.g., http://192.168.1.100:7125" {...field} disabled={isSubmitting} />
+                <Input placeholder="E.g., http://192.168.1.100:7125 or https://printer.local" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>

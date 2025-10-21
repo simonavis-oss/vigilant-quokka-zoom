@@ -29,16 +29,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const validateUrlOrIp = (val: string) => {
   if (!val) return false;
   let urlToTest = val;
-  // Prepend http:// if missing for validation purposes
-  if (!urlToTest.startsWith('http://') && !urlToTest.startsWith('https://')) {
-    urlToTest = `http://${urlToTest}`;
+  
+  // Check if it looks like a URL (has a protocol)
+  if (urlToTest.startsWith('http://') || urlToTest.startsWith('https://')) {
+    try {
+      new URL(urlToTest);
+      return true;
+    } catch {
+      return false;
+    }
   }
-  try {
-    new URL(urlToTest);
+  
+  // If no protocol, assume it's a hostname or IP with port, and check if it contains a dot or port
+  if (urlToTest.includes('.') || urlToTest.includes(':')) {
     return true;
-  } catch {
-    return false;
   }
+  
+  return false;
 };
 
 const PrinterSchema = z.object({
@@ -51,7 +58,7 @@ const PrinterSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["base_url"],
-      message: "Must be a valid URL or IP address (e.g., 192.168.1.100:7125).",
+      message: "Must be a valid URL or IP address (e.g., http://192.168.1.100:7125).",
     });
   }
 });
@@ -77,19 +84,14 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
   
   const isSubmitting = form.formState.isSubmitting;
 
-  // Removed handleSelectSuggestion as it's no longer needed
-
   const onSubmit = async (data: PrinterFormValues) => {
     if (!user) {
       showError("User not authenticated.");
       return;
     }
 
-    let finalBaseUrl = data.base_url!;
-    // Ensure protocol is present before saving
-    if (!finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
-      finalBaseUrl = `http://${finalBaseUrl}`;
-    }
+    // Do NOT automatically prepend http://. Save the URL exactly as the user entered it.
+    const finalBaseUrl = data.base_url.trim();
 
     const printerData: any = {
       user_id: user.id,
@@ -143,7 +145,7 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                 <FormItem>
                   <FormLabel>Printer Address (URL/IP)</FormLabel>
                   <FormControl>
-                    <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
+                    <Input placeholder="E.g., http://192.168.1.100:7125 or https://printer.local" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -162,7 +164,6 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                 </FormItem>
               )}
             />
-            {/* Removed AutoDiscoverySuggestions */}
 
             <Button 
               type="submit" 
