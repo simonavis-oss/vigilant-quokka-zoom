@@ -113,7 +113,7 @@ const JobDetailsForm: React.FC<JobDetailsFormProps> = ({ job, materials, onSubmi
         <div className="p-3 border rounded-lg bg-muted/50">
           <p className="text-sm font-medium">Calculated Cost</p>
           <p className="text-2xl font-bold">
-            {calculatedCost !== null ? `$${calculatedCost.toFixed(2)}` : "$0.00"}
+            {calculatedCost !== null ? `£${calculatedCost.toFixed(2)}` : "£0.00"}
           </p>
         </div>
 

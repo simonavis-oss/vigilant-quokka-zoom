@@ -30,35 +30,35 @@ const COMMON_MATERIALS: Omit<Material, "id" | "user_id" | "created_at">[] = [
     type: "PLA",
     color: "White",
     density_g_cm3: 1.24,
-    cost_per_kg: 22.0,
+    cost_per_kg: 18.0, // Updated to £
   },
   {
     name: "eSUN PLA+ Black",
     type: "PLA",
     color: "Black",
     density_g_cm3: 1.24,
-    cost_per_kg: 20.0,
+    cost_per_kg: 16.0, // Updated to £
   },
   {
     name: "Overture PETG Clear",
     type: "PETG",
     color: "Clear",
     density_g_cm3: 1.27,
-    cost_per_kg: 25.0,
+    cost_per_kg: 20.0, // Updated to £
   },
   {
     name: "Prusa ABS Natural",
     type: "ABS",
     color: "Natural",
     density_g_cm3: 1.04,
-    cost_per_kg: 24.0,
+    cost_per_kg: 19.0, // Updated to £
   },
   {
     name: "NinjaTek Flexa ELA Black",
     type: "TPU",
     color: "Black",
     density_g_cm3: 1.22,
-    cost_per_kg: 80.0,
+    cost_per_kg: 65.0, // Updated to £
   },
 ];
 
@@ -72,7 +72,7 @@ const CommonMaterialsDropdown: React.FC<CommonMaterialsDropdownProps> = ({
     type: "",
     color: "",
     density_g_cm3: 1.24,
-    cost_per_kg: 20.0,
+    cost_per_kg: 16.0, // Default to £
   });
 
   const handleSelect = (value: string) => {
@@ -106,7 +106,7 @@ const CommonMaterialsDropdown: React.FC<CommonMaterialsDropdownProps> = ({
       type: "",
       color: "",
       density_g_cm3: 1.24,
-      cost_per_kg: 20.0,
+      cost_per_kg: 16.0, // Reset to £
     });
   };
 
@@ -139,7 +139,7 @@ const CommonMaterialsDropdown: React.FC<CommonMaterialsDropdownProps> = ({
               key={index}
               value={`${material.name} (${material.type})`}
             >
-              {material.name} ({material.type})
+              {material.name} ({material.type}) - £{material.cost_per_kg}/kg
             </SelectItem>
           ))}
         </SelectContent>
@@ -210,7 +210,7 @@ const CommonMaterialsDropdown: React.FC<CommonMaterialsDropdownProps> = ({
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="cost" className="text-right">
-                Cost ($/kg)
+                Cost (£/kg)
               </Label>
               <Input
                 id="cost"

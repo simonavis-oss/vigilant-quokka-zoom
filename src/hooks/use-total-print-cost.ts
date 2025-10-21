@@ -31,7 +31,7 @@ export const useTotalPrintCost = () => {
     staleTime: 60000, // Cache for 1 minute
   });
 
-  const formattedCost = totalCost !== undefined ? `$${totalCost.toFixed(2)}` : "N/A";
+  const formattedCost = totalCost !== undefined ? `£${totalCost.toFixed(2)}` : "N/A";
 
   return {
     totalPrintCost: formattedCost,

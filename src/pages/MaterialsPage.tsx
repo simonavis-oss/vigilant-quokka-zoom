@@ -183,7 +183,7 @@ const MaterialsPage: React.FC = () => {
                     <TableHead>Type</TableHead>
                     <TableHead>Color</TableHead>
                     <TableHead className="text-right">Density (g/cm³)</TableHead>
-                    <TableHead className="text-right">Cost ($/kg)</TableHead>
+                    <TableHead className="text-right">Cost (£/kg)</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -194,7 +194,7 @@ const MaterialsPage: React.FC = () => {
                       <TableCell>{material.type}</TableCell>
                       <TableCell>{material.color || 'N/A'}</TableCell>
                       <TableCell className="text-right">{material.density_g_cm3.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">${material.cost_per_kg.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">£{material.cost_per_kg.toFixed(2)}</TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="sm" onClick={() => handleEdit(material)} disabled={deleteMutation.isPending}>
                           <Edit className="h-4 w-4" />

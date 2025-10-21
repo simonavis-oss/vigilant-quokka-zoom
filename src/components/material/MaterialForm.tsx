@@ -44,7 +44,7 @@ const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, onSubmit, isSu
       type: initialData?.type || "",
       color: initialData?.color || "",
       density_g_cm3: initialData?.density_g_cm3 || 1.24,
-      cost_per_kg: initialData?.cost_per_kg || 20.00,
+      cost_per_kg: initialData?.cost_per_kg || 16.0, // Default to £
     },
     mode: "onChange",
   });
@@ -117,7 +117,7 @@ const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, onSubmit, isSu
             name="cost_per_kg"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Cost per kg ($)</FormLabel>
+                <FormLabel>Cost (£/kg)</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} disabled={isSubmitting} />
                 </FormControl>
