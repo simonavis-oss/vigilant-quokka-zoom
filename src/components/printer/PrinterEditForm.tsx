@@ -14,8 +14,9 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Printer } from "@/types/printer";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import DeleteConfirmationDialog from "../DeleteConfirmationDialog";
 
 // --- Schemas ---
 
@@ -42,10 +43,11 @@ type PrinterFormValues = z.infer<typeof PrinterEditSchema>;
 interface PrinterEditFormProps {
   printer: Printer;
   onSubmit: (data: Partial<Printer>) => void;
+  onDelete: () => void; // New prop for delete action
   isSubmitting: boolean;
 }
 
-const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, isSubmitting }) => {
+const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, onDelete, isSubmitting }) => {
   const form = useForm<PrinterFormValues>({
     resolver: zodResolver(PrinterEditSchema),
     defaultValues: {
@@ -161,10 +163,22 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
           )}
         />
         
-        <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save Changes
-        </Button>
+        <div className="flex justify-between items-center pt-4 border-t">
+          <DeleteConfirmationDialog
+            onConfirm={onDelete}
+            title={`Delete printer "${printer.name}"?`}
+            description="This will permanently remove the printer and all associated data. This action cannot be undone."
+            triggerButton={
+              <Button variant="destructive" type="button" disabled={isSubmitting}>
+                <Trash2 className="h-4 w-4 mr-2" /> Delete Printer
+              </Button>
+            }
+          />
+          <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
+        </div>
       </form>
     </Form>
   );

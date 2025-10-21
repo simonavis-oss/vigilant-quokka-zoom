@@ -78,7 +78,6 @@ const PrinterDetails = () => {
     },
   });
   
-  // The command mutation is still useful for the control panel, but we remove the quick actions here.
   const commandMutation = useMutation({
     mutationFn: (command: string) => sendPrinterCommand(printer!, command),
     onSuccess: (data, command) => {
@@ -99,8 +98,6 @@ const PrinterDetails = () => {
     deleteMutation.mutate(printer.id);
   };
   
-  // Removed handleQuickCommand as it's no longer needed for this component's rendering.
-
   if (isPrinterLoading) {
     return (
       <div className="space-y-6">
@@ -119,8 +116,6 @@ const PrinterDetails = () => {
     );
   }
   
-  // const isCommandPending = commandMutation.isPending; // No longer needed here
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -142,19 +137,10 @@ const PrinterDetails = () => {
                 printer={printer} 
                 onSubmit={handlePrinterUpdated} 
                 isSubmitting={isSubmitting} 
+                onDelete={handleDeletePrinter} // Pass delete handler
               />
             </DialogContent>
           </Dialog>
-          <DeleteConfirmationDialog
-            onConfirm={handleDeletePrinter}
-            title={`Delete printer "${printer.name}"?`}
-            description="This will permanently remove the printer and all associated data. This action cannot be undone."
-            triggerButton={
-              <Button variant="destructive">
-                <Trash2 className="h-4 w-4 mr-2" /> Delete Printer
-              </Button>
-            }
-          />
         </div>
       </div>
 
@@ -170,8 +156,6 @@ const PrinterDetails = () => {
             />
           </CardContent>
         </Card>
-        
-        {/* Removed Quick Actions Card */}
       </div>
 
       <Tabs defaultValue="control" className="space-y-4">
