@@ -61,7 +61,7 @@ const MainLayout = () => {
   });
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading application...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-muted/20">Loading application...</div>;
   }
 
   if (!user) {
@@ -85,15 +85,15 @@ const MainLayout = () => {
         </Sheet>
       );
     }
-    return <aside className="hidden lg:block w-64 border-r bg-sidebar/50"><Sidebar /></aside>;
+    return <aside className="hidden lg:block w-64 border-r bg-card"><Sidebar /></aside>;
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-muted/20">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between lg:justify-end">
+        <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center lg:hidden">{renderSidebar()}<Link to="/" className="ml-4 text-xl font-bold hover:opacity-80 transition-opacity">Farm Manager</Link></div>
-          <div className="hidden lg:block"><Link to="/" className="text-xl font-bold hover:opacity-80 transition-opacity">3D Print Farm Manager</Link></div>
+          <div className="hidden lg:block flex-1" />
           <div className="flex items-center space-x-4">
             <ThemeToggle />
             <DropdownMenu>
@@ -115,10 +115,10 @@ const MainLayout = () => {
         </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
-        <aside className="hidden lg:block w-64 border-r bg-card/50"><Sidebar /></aside>
+        <aside className="hidden lg:block w-64 border-r bg-card"><Sidebar /></aside>
         <main className="flex-1 overflow-y-auto p-4 md:p-8"><Outlet /></main>
       </div>
-      <footer className="border-t"><MadeWithDyad /></footer>
+      <footer className="border-t bg-background"><MadeWithDyad /></footer>
       <FailureAlertDialog
         alert={activeAlert}
         isOpen={isAlertOpen}
