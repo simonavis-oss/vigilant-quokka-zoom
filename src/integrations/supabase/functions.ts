@@ -83,6 +83,10 @@ const callMoonrakerApi = async (
 
     if (!response.ok) {
       const errorText = await response.text();
+      // Check for common authentication/permission errors
+      if (response.status === 403) {
+        throw new Error(`Moonraker API Error (403 Forbidden): Check your API Key and Moonraker permissions.`);
+      }
       throw new Error(`Moonraker API Error (${response.status}): ${errorText.substring(0, 100)}`);
     }
 
@@ -91,9 +95,9 @@ const callMoonrakerApi = async (
     return text ? JSON.parse(text) : { result: { status: 'ok' } };
 
   } catch (error) {
-    // If the error is a network error (e.g., CORS, connection refused), throw a specific message
+    // If the error is a network error (e.g., CORS, connection refused, DNS failure)
     if (error instanceof TypeError) {
-      throw new Error(`Network connection failed. Ensure the app is running on the same local network as the printer, and check CORS settings on Moonraker.`);
+      throw new Error(`Network connection failed. This is often due to: 1. Incorrect IP/URL, 2. Printer is offline, or 3. CORS blocking (Moonraker needs to allow requests from this app's address).`);
     }
     throw error;
   }
