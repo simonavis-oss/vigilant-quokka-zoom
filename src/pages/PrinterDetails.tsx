@@ -18,7 +18,7 @@ import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
 import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
 import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel";
 import PrintJobHistoryPanel from "@/components/printer/PrintJobHistoryPanel";
-import CancellationDialog from "@/components/CancellationDialog";
+import CancellationDialog from "../CancellationDialog";
 import MaintenanceLogPanel from "@/components/printer/MaintenanceLogPanel";
 import { Badge } from "@/components/ui/badge";
 
@@ -74,17 +74,36 @@ const PrinterOverviewTab = ({ printer }: { printer: Printer }) => {
   );
 };
 
-const PrinterDetailsHeader = ({ printer }: { printer: Printer }) => {
+interface PrinterDetailsHeaderProps {
+  printer: Printer;
+  onEmergencyStop: () => void;
+  isEmergencyStopPending: boolean;
+}
+
+const PrinterDetailsHeader = ({ printer, onEmergencyStop, isEmergencyStopPending }: PrinterDetailsHeaderProps) => {
   const navigate = useNavigate();
   const { data: status, isError } = useQuery<PrinterStatus>({ queryKey: ["printerStatus", printer.id], queryFn: () => getPrinterStatus(printer), refetchInterval: 10000 });
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/printers")} className="mr-2"><ArrowLeft className="h-5 w-5" /></Button>
         <h1 className="text-3xl font-bold">{printer.name}</h1>
         {status && !isError && <Badge variant="default"><Wifi className="h-4 w-4 mr-2" />Online</Badge>}
         {isError && <Badge variant="destructive"><WifiOff className="h-4 w-4 mr-2" />Offline</Badge>}
+      </div>
+      <div>
+        <DeleteConfirmationDialog
+          onConfirm={onEmergencyStop}
+          title={`Confirm Emergency Stop for ${printer.name}?`}
+          description="This will immediately halt all printer operations and may require a restart. This action cannot be undone."
+          triggerButton={
+            <Button variant="destructive" disabled={isEmergencyStopPending}>
+              {isEmergencyStopPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+              Emergency Stop
+            </Button>
+          }
+        />
       </div>
     </div>
   );
@@ -107,7 +126,11 @@ const PrinterDetails = () => {
 
   return (
     <div className="space-y-6">
-      <PrinterDetailsHeader printer={printer} />
+      <PrinterDetailsHeader 
+        printer={printer}
+        onEmergencyStop={() => emergencyStopMutation.mutate(printer)}
+        isEmergencyStopPending={emergencyStopMutation.isPending}
+      />
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-7">
           <TabsTrigger value="overview"><LayoutDashboard className="h-4 w-4 mr-2" />Overview</TabsTrigger>
@@ -138,13 +161,8 @@ const PrinterDetails = () => {
           </Card>
           <Card className="border-destructive">
             <CardHeader><CardTitle className="text-destructive flex items-center"><Zap className="h-5 w-5 mr-2" />Danger Zone</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div>
-                <h3 className="font-semibold">Emergency Stop</h3>
-                <p className="text-sm text-muted-foreground mb-2">Immediately halt all printer operations. Use only in emergencies.</p>
-                <DeleteConfirmationDialog onConfirm={() => emergencyStopMutation.mutate(printer)} title={`Confirm Emergency Stop?`} description="This will immediately halt all printer operations and may require a restart." triggerButton={<Button variant="destructive" disabled={emergencyStopMutation.isPending}>{emergencyStopMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}E-Stop</Button>} />
-              </div>
-              <div className="pt-4 border-t border-destructive/50">
                 <h3 className="font-semibold">Delete Printer</h3>
                 <p className="text-sm text-muted-foreground mb-2">Permanently remove this printer and its history from your farm.</p>
                 <DeleteConfirmationDialog onConfirm={() => deleteMutation.mutate(printer.id)} title={`Are you absolutely sure?`} description={`This will permanently delete "${printer.name}". This cannot be undone.`} triggerButton={<Button variant="destructive" outline disabled={deleteMutation.isPending}>{deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}Delete Printer</Button>} />
