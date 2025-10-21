@@ -78,6 +78,7 @@ const PrinterDetails = () => {
     },
   });
   
+  // The command mutation is still useful for the control panel, but we remove the quick actions here.
   const commandMutation = useMutation({
     mutationFn: (command: string) => sendPrinterCommand(printer!, command),
     onSuccess: (data, command) => {
@@ -98,10 +99,7 @@ const PrinterDetails = () => {
     deleteMutation.mutate(printer.id);
   };
   
-  const handleQuickCommand = (command: string) => () => {
-    if (!printer) return;
-    commandMutation.mutate(command);
-  };
+  // Removed handleQuickCommand as it's no longer needed for this component's rendering.
 
   if (isPrinterLoading) {
     return (
@@ -121,7 +119,7 @@ const PrinterDetails = () => {
     );
   }
   
-  const isCommandPending = commandMutation.isPending;
+  // const isCommandPending = commandMutation.isPending; // No longer needed here
 
   return (
     <div className="space-y-6">
@@ -161,7 +159,7 @@ const PrinterDetails = () => {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <Card className="md:col-span-2 lg:col-span-1">
           <CardHeader>
             <CardTitle>Printer Status</CardTitle>
           </CardHeader>
@@ -173,39 +171,7 @@ const PrinterDetails = () => {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={handleQuickCommand("G28")}
-                disabled={isCommandPending}
-              >
-                {isCommandPending && commandMutation.variables === "G28" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Home All Axes"}
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={handleQuickCommand("M140 S60\nM104 S200")} // Simple PLA preheat
-                disabled={isCommandPending}
-              >
-                {isCommandPending && commandMutation.variables?.includes("M140 S60") ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Preheat PLA"}
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={handleQuickCommand("M84")}
-                disabled={isCommandPending}
-              >
-                {isCommandPending && commandMutation.variables === "M84" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Disable Steppers"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Removed Quick Actions Card */}
       </div>
 
       <Tabs defaultValue="control" className="space-y-4">
