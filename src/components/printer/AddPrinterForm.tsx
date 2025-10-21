@@ -24,7 +24,6 @@ import { useSession } from "@/context/SessionContext";
 import { showSuccess, showError } from "@/utils/toast";
 import { Loader2, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import AutoDiscoverySuggestions from "./AutoDiscoverySuggestions";
 
 // Helper function to validate URL/IP
 const validateUrlOrIp = (val: string) => {
@@ -78,9 +77,7 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
   
   const isSubmitting = form.formState.isSubmitting;
 
-  const handleSelectSuggestion = (url: string) => {
-    form.setValue("base_url", url, { shouldValidate: true, shouldDirty: true });
-  };
+  // Removed handleSelectSuggestion as it's no longer needed
 
   const onSubmit = async (data: PrinterFormValues) => {
     if (!user) {
@@ -165,7 +162,7 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                 </FormItem>
               )}
             />
-            <AutoDiscoverySuggestions onSelect={handleSelectSuggestion} />
+            {/* Removed AutoDiscoverySuggestions */}
 
             <Button 
               type="submit" 
