@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { showSuccess, showError } from "@/utils/toast";
 import MaterialForm from "@/components/material/MaterialForm";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
+import CommonMaterialsDropdown from "@/components/material/CommonMaterialsDropdown";
 
 const MaterialsPage: React.FC = () => {
   const { user } = useSession();
@@ -82,6 +83,19 @@ const MaterialsPage: React.FC = () => {
     setEditingMaterial(null);
   };
 
+  const handleCommonMaterialSelect = (material: Material) => {
+    if (!user) return showError("User not authenticated.");
+    
+    insertMutation.mutate({
+      name: material.name,
+      type: material.type,
+      color: material.color,
+      density_g_cm3: material.density_g_cm3,
+      cost_per_kg: material.cost_per_kg,
+      user_id: user.id,
+    });
+  };
+
   const isSubmitting = insertMutation.isPending || updateMutation.isPending;
 
   if (isLoading) {
@@ -124,6 +138,20 @@ const MaterialsPage: React.FC = () => {
           )}
         </Button>
       </div>
+
+      {!isFormOpen && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Add Common Materials</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CommonMaterialsDropdown
+              onMaterialSelect={handleCommonMaterialSelect}
+              existingMaterials={materials}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {isFormOpen && (
         <Card>
