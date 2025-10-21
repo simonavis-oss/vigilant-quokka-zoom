@@ -87,7 +87,7 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
     },
   });
   
-  const handleManageClick = () => {
+  const handleNavigate = () => {
     navigate(`/printers/${printer.id}`);
   };
 
@@ -96,7 +96,10 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
   };
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card 
+      className="flex flex-col h-full cursor-pointer hover:shadow-lg transition-shadow duration-200"
+      onClick={handleNavigate}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center space-x-2">
           <PrinterIcon className="h-5 w-5 text-primary" />
@@ -104,12 +107,17 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleManageClick}>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleNavigate(); }}>
               <Settings className="mr-2 h-4 w-4" />
               Manage Printer
             </DropdownMenuItem>
@@ -118,7 +126,7 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
               <AlertDialogTrigger asChild>
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
-                  onSelect={(e) => e.preventDefault()} // Prevents dropdown from closing
+                  onSelect={(e) => { e.stopPropagation(); e.preventDefault(); }}
                 >
                   <Zap className="mr-2 h-4 w-4" />
                   Emergency Stop
@@ -169,7 +177,10 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
       </CardContent>
       
       {!isLoading && !isError && status?.is_printing && (
-        <div className="p-4 border-t grid grid-cols-2 gap-2">
+        <div 
+          className="p-4 border-t grid grid-cols-2 gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
           {status.is_paused ? (
             <Button 
               variant="outline" 
