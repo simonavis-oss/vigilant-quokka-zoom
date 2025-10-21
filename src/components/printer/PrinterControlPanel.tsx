@@ -124,25 +124,41 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
                 ))}
               </ToggleGroup>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {/* X/Y Controls */}
-              <div className="col-span-2 grid grid-cols-3 grid-rows-3 gap-2">
-                <div className="col-start-2 row-start-1 flex justify-center"><Button size="icon" variant="outline" onClick={() => handleMove('Y', 1)} disabled={isSending}><ArrowUp className="h-4 w-4" /></Button></div>
-                <div className="col-start-1 row-start-2 flex justify-center"><Button size="icon" variant="outline" onClick={() => handleMove('X', -1)} disabled={isSending}><ArrowLeft className="h-4 w-4" /></Button></div>
-                <div className="col-start-2 row-start-2 flex justify-center"><Button size="icon" variant="outline" onClick={handleQuickCommand("G28 X Y")} disabled={isSending}><Home className="h-4 w-4" /></Button></div>
-                <div className="col-start-3 row-start-2 flex justify-center"><Button size="icon" variant="outline" onClick={() => handleMove('X', 1)} disabled={isSending}><ArrowRight className="h-4 w-4" /></Button></div>
-                <div className="col-start-2 row-start-3 flex justify-center"><Button size="icon" variant="outline" onClick={() => handleMove('Y', -1)} disabled={isSending}><ArrowDown className="h-4 w-4" /></Button></div>
+            
+            <div className="flex items-center justify-around pt-4">
+              {/* D-Pad Controls */}
+              <div className="grid grid-cols-3 grid-rows-3 w-36 h-36">
+                <Button size="icon" variant="outline" onClick={() => handleMove('Y', 1)} disabled={isSending} className="col-start-2 row-start-1 rounded-t-full rounded-b-none w-full h-full">
+                  <ArrowUp className="h-5 w-5" />
+                </Button>
+                <Button size="icon" variant="outline" onClick={() => handleMove('X', -1)} disabled={isSending} className="col-start-1 row-start-2 rounded-l-full rounded-r-none w-full h-full">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <Button size="icon" variant="outline" onClick={handleQuickCommand("G28 X Y")} disabled={isSending} className="col-start-2 row-start-2 rounded-full z-10 border-2 border-primary w-full h-full">
+                  <Home className="h-5 w-5" />
+                </Button>
+                <Button size="icon" variant="outline" onClick={() => handleMove('X', 1)} disabled={isSending} className="col-start-3 row-start-2 rounded-r-full rounded-l-none w-full h-full">
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+                <Button size="icon" variant="outline" onClick={() => handleMove('Y', -1)} disabled={isSending} className="col-start-2 row-start-3 rounded-b-full rounded-t-none w-full h-full">
+                  <ArrowDown className="h-5 w-5" />
+                </Button>
               </div>
+
               {/* Z Controls */}
-              <div className="col-span-1 flex flex-col items-center justify-center space-y-2">
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <p className="text-sm font-medium text-muted-foreground mb-2">Z Axis</p>
                 <Button variant="outline" size="icon" onClick={() => handleMove('Z', 1)} disabled={isSending}><ArrowUp className="h-4 w-4" /></Button>
                 <Button variant="outline" size="icon" onClick={handleQuickCommand("G28 Z")} disabled={isSending}><Home className="h-4 w-4" /></Button>
                 <Button variant="outline" size="icon" onClick={() => handleMove('Z', -1)} disabled={isSending}><ArrowDown className="h-4 w-4" /></Button>
               </div>
             </div>
-            <Button variant="secondary" className="w-full" onClick={handleQuickCommand("G28")} disabled={isSending}>
-              <Home className="h-4 w-4 mr-2" /> Home All Axes
-            </Button>
+            
+            <div className="pt-4 border-t flex justify-center">
+              <Button variant="secondary" onClick={handleQuickCommand("G28")} disabled={isSending}>
+                <Home className="h-4 w-4 mr-2" /> Home All Axes
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
