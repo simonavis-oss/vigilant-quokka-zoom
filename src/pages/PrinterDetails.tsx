@@ -7,7 +7,7 @@ import { fetchPrintJobs } from "@/integrations/supabase/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer as PrinterIcon, Settings, History, Camera, BarChart3, Brain, Trash2 } from "lucide-react";
+import { Printer as PrinterIcon, Settings, History, Camera, BarChart3, Brain, Trash2, Loader2 } from "lucide-react";
 import PrinterStatusDisplay from "@/components/printer/PrinterStatusDisplay";
 import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
 import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAIFailureDetection } from "@/hooks/useAIFailureDetection";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import { showSuccess, showError } from "@/utils/toast";
+import { sendPrinterCommand } from "@/integrations/supabase/functions"; // Import sendPrinterCommand
 
 const PrinterDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -76,6 +77,16 @@ const PrinterDetails = () => {
       showError(err.message);
     },
   });
+  
+  const commandMutation = useMutation({
+    mutationFn: (command: string) => sendPrinterCommand(printer!, command),
+    onSuccess: (data, command) => {
+      showSuccess(`Command sent: ${command.split('\n')[0]}...`);
+    },
+    onError: (err) => {
+      showError(`Failed to execute command: ${err.message}`);
+    },
+  });
 
   const handlePrinterUpdated = (updates: Partial<Printer>) => {
     setIsSubmitting(true);
@@ -85,6 +96,11 @@ const PrinterDetails = () => {
   const handleDeletePrinter = () => {
     if (!printer) return;
     deleteMutation.mutate(printer.id);
+  };
+  
+  const handleQuickCommand = (command: string) => () => {
+    if (!printer) return;
+    commandMutation.mutate(command);
   };
 
   if (isPrinterLoading) {
@@ -104,6 +120,8 @@ const PrinterDetails = () => {
       </div>
     );
   }
+  
+  const isCommandPending = commandMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -161,14 +179,29 @@ const PrinterDetails = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Button variant="outline" className="w-full">
-                Home All Axes
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleQuickCommand("G28")}
+                disabled={isCommandPending}
+              >
+                {isCommandPending && commandMutation.variables === "G28" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Home All Axes"}
               </Button>
-              <Button variant="outline" className="w-full">
-                Preheat PLA
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleQuickCommand("M140 S60\nM104 S200")} // Simple PLA preheat
+                disabled={isCommandPending}
+              >
+                {isCommandPending && commandMutation.variables?.includes("M140 S60") ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Preheat PLA"}
               </Button>
-              <Button variant="outline" className="w-full">
-                Disable Steppers
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleQuickCommand("M84")}
+                disabled={isCommandPending}
+              >
+                {isCommandPending && commandMutation.variables === "M84" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Disable Steppers"}
               </Button>
             </div>
           </CardContent>
