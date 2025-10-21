@@ -9,7 +9,7 @@ const Login = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">3D Print Farm Manager</CardTitle>
+          <CardTitle className="text-2xl">3D Print</CardTitle>
         </CardHeader>
         <CardContent>
           <Auth
@@ -27,7 +27,7 @@ const Login = () => {
               },
             }}
             theme="light"
-            view="sign_in" // Explicitly set to sign_in
+            view="sign_in"
           />
         </CardContent>
       </Card>

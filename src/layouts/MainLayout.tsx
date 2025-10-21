@@ -92,7 +92,7 @@ const MainLayout = () => {
     <div className="min-h-screen flex flex-col bg-muted/20">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center lg:hidden">{renderSidebar()}<Link to="/" className="ml-4 text-xl font-bold hover:opacity-80 transition-opacity">Farm Manager</Link></div>
+          <div className="flex items-center lg:hidden">{renderSidebar()}<Link to="/" className="ml-4 text-xl font-bold hover:opacity-80 transition-opacity">3D Print</Link></div>
           <div className="hidden lg:block flex-1" />
           <div className="flex items-center space-x-4">
             <ThemeToggle />
