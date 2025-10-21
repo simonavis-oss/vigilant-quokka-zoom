@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Move, Thermometer, Loader2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, Camera } from "lucide-react";
+import { Send, Move, Thermometer, Loader2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, Camera, ChevronDown } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { Printer } from "@/types/printer";
 import { sendPrinterCommand } from "@/integrations/supabase/functions";
@@ -10,6 +10,17 @@ import PreheatDropdown from "./PreheatDropdown";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Label } from "@/components/ui/label";
 import WebcamStream from "./WebcamStream";
+import { useQuery } from "@tanstack/react-query";
+import { fetchPrinterMacros } from "@/integrations/supabase/queries";
+import { PrinterMacro } from "@/types/printer-macro";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface PrinterControlPanelProps {
   printer: Printer;
@@ -22,6 +33,11 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
   const [isSending, setIsSending] = useState(false);
   const [moveDistance, setMoveDistance] = useState<number>(10);
   const [customMoveValue, setCustomMoveValue] = useState<string>("");
+
+  const { data: macros, isLoading: isLoadingMacros } = useQuery<PrinterMacro[]>({
+    queryKey: ["printerMacros", printer.id],
+    queryFn: () => fetchPrinterMacros(printer.id),
+  });
 
   const handleSendGcode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +70,7 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
   const handleMove = (axis: 'X' | 'Y' | 'Z', direction: 1 | -1) => {
     const distance = parseFloat(customMoveValue) || moveDistance;
     const finalDistance = distance * direction;
-    const command = `G91\\nG0 ${axis}${finalDistance}`;
+    const command = `G91\nG0 ${axis}${finalDistance}`;
     handleQuickCommand(command)();
   };
 
@@ -69,7 +85,6 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
     const value = e.target.value;
     setCustomMoveValue(value);
     if (value) {
-      // Deselect any active toggle
       setMoveDistance(0);
     }
   };
@@ -131,6 +146,26 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
         <CardContent>
           <form onSubmit={handleSendGcode} className="flex space-x-2">
             <Input placeholder="Enter G-Code (e.g., G28)" value={gcode} onChange={(e) => setGcode(e.target.value)} disabled={isSending} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" disabled={isLoadingMacros || isSending}>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Select a Macro</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {macros && macros.length > 0 ? (
+                  macros.map((macro) => (
+                    <DropdownMenuItem key={macro.id} onSelect={() => setGcode(macro.gcode)}>
+                      {macro.name}
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>No macros found</DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button type="submit" disabled={isSending || !gcode.trim()}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}</Button>
           </form>
         </CardContent>
