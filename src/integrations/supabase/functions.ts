@@ -62,6 +62,12 @@ export interface TemperaturePreset {
   heater_bed: number;
 }
 
+export interface BedClearanceResponse {
+  is_clear: boolean;
+  reason: string;
+  snapshot_url: string | null;
+}
+
 // --- Helper for Direct Moonraker Calls ---
 
 const callMoonrakerApi = async (
@@ -226,6 +232,23 @@ export const cancelActivePrint = async (printerId: string, reason: string): Prom
 };
 
 // --- Database Interaction Functions (Keep using Edge Functions for security/atomicity) ---
+
+export const checkBedClearance = async (printerId: string): Promise<BedClearanceResponse> => {
+  const { data, error } = await supabase.functions.invoke("check-bed-clearance", {
+    body: { printer_id: printerId },
+  });
+
+  if (error) {
+    const response = await error.context.json();
+    throw new Error(response.error || `Edge Function Invocation Error: ${error.message}`);
+  }
+  
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  return data as BedClearanceResponse;
+};
 
 export const assignPrintJob = async (jobId: string, printerId: string): Promise<AssignmentResponse> => {
   const { data, error } = await supabase.functions.invoke("assign-print-job", {
