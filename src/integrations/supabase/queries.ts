@@ -4,7 +4,8 @@ import { PrintQueueItem } from "@/types/print-queue";
 import { Printer } from "@/types/printer";
 import { MaintenanceLog } from "@/types/maintenance";
 import { PrinterMacro } from "@/types/printer-macro";
-import { Material } from "@/types/material"; // Import new type
+import { Material } from "@/types/material";
+import { PrinterMaterial } from "@/types/printer-material";
 
 export interface Profile {
   id: string;
@@ -63,10 +64,7 @@ export const fetchPrintJobs = async (printerId: string): Promise<PrintJob[]> => 
     .order("started_at", { ascending: false });
 
   if (error) {
-    // Allow empty results without throwing an error
-    if (error.code === 'PGRST116') {
-      return [];
-    }
+    if (error.code === 'PGRST116') return [];
     throw new Error(error.message);
   }
   return data as PrintJob[];
@@ -81,9 +79,7 @@ export const fetchPrintQueue = async (userId: string): Promise<PrintQueueItem[]>
     .order("created_at", { ascending: true });
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return [];
-    }
+    if (error.code === 'PGRST116') return [];
     throw new Error(error.message);
   }
   return data as PrintQueueItem[];
@@ -97,9 +93,7 @@ export const fetchAllPrintJobsForUser = async (userId: string): Promise<PrintJob
     .order("started_at", { ascending: false });
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return [];
-    }
+    if (error.code === 'PGRST116') return [];
     throw new Error(error.message);
   }
   
@@ -114,18 +108,13 @@ export const fetchTotalPrintTime = async (userId: string): Promise<number> => {
     .eq("status", "success");
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return 0;
-    }
+    if (error.code === 'PGRST116') return 0;
     throw new Error(error.message);
   }
 
-  if (!data) {
-    return 0;
-  }
+  if (!data) return 0;
 
-  const totalSeconds = data.reduce((sum, job) => sum + (job.duration_seconds || 0), 0);
-  return totalSeconds;
+  return data.reduce((sum, job) => sum + (job.duration_seconds || 0), 0);
 };
 
 export const fetchFailureAlerts = async (userId: string): Promise<FailureAlert[]> => {
@@ -136,9 +125,7 @@ export const fetchFailureAlerts = async (userId: string): Promise<FailureAlert[]
     .order("created_at", { ascending: false });
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return [];
-    }
+    if (error.code === 'PGRST116') return [];
     throw new Error(error.message);
   }
   return data as FailureAlert[];
@@ -152,9 +139,7 @@ export const fetchMaintenanceLogs = async (printerId: string): Promise<Maintenan
     .order("maintenance_date", { ascending: false });
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return [];
-    }
+    if (error.code === 'PGRST116') return [];
     throw new Error(error.message);
   }
   return data as MaintenanceLog[];
@@ -168,9 +153,7 @@ export const fetchPrinterMacros = async (printerId: string): Promise<PrinterMacr
     .order("created_at", { ascending: true });
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return [];
-    }
+    if (error.code === 'PGRST116') return [];
     throw new Error(error.message);
   }
   return data as PrinterMacro[];
@@ -184,10 +167,21 @@ export const fetchMaterials = async (userId: string): Promise<Material[]> => {
     .order("name", { ascending: true });
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return [];
-    }
+    if (error.code === 'PGRST116') return [];
     throw new Error(error.message);
   }
   return data as Material[];
+};
+
+export const fetchLoadedMaterials = async (printerId: string): Promise<PrinterMaterial[]> => {
+  const { data, error } = await supabase
+    .from("printer_materials")
+    .select(`*, materials (*)`)
+    .eq("printer_id", printerId);
+
+  if (error) {
+    if (error.code === 'PGRST116') return [];
+    throw new Error(error.message);
+  }
+  return data as PrinterMaterial[];
 };
