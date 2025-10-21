@@ -75,6 +75,11 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
   return (
     <div className="space-y-6">
       <Card>
+        <CardHeader><CardTitle className="flex items-center"><Thermometer className="h-5 w-5 mr-2" /> Temperature Controls</CardTitle></CardHeader>
+        <CardContent><PreheatDropdown printer={printer} /></CardContent>
+      </Card>
+      
+      <Card>
         <CardHeader><CardTitle className="flex items-center"><Move className="h-5 w-5 mr-2" /> Manual Control</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-2">
@@ -124,18 +129,15 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
           </div>
         </CardContent>
       </Card>
+      
       <Card>
-        <CardHeader><CardTitle className="flex items-center"><Send className="h-5 w-5 mr-2" /> Send G-Code</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center"><Send className="h-5 w-5 mr-2" /> Send Command</CardTitle></CardHeader>
         <CardContent>
           <form onSubmit={handleSendGcode} className="flex space-x-2">
             <Input placeholder="Enter G-Code (e.g., G28)" value={gcode} onChange={(e) => setGcode(e.target.value)} disabled={isSending} />
             <Button type="submit" disabled={isSending || !gcode.trim()}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}</Button>
           </form>
         </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle className="flex items-center"><Thermometer className="h-5 w-5 mr-2" /> Temperature Controls</CardTitle></CardHeader>
-        <CardContent><PreheatDropdown printer={printer} /></CardContent>
       </Card>
     </div>
   );
