@@ -125,32 +125,34 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
               </ToggleGroup>
             </div>
             
-            <div className="flex items-center justify-around pt-4">
-              {/* D-Pad Controls */}
-              <div className="grid grid-cols-3 grid-rows-3 w-36 h-36">
-                <Button size="icon" variant="outline" onClick={() => handleMove('Y', 1)} disabled={isSending} className="col-start-2 row-start-1 rounded-t-full rounded-b-none w-full h-full">
-                  <ArrowUp className="h-5 w-5" />
-                </Button>
-                <Button size="icon" variant="outline" onClick={() => handleMove('X', -1)} disabled={isSending} className="col-start-1 row-start-2 rounded-l-full rounded-r-none w-full h-full">
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <Button size="icon" variant="outline" onClick={handleQuickCommand("G28 X Y")} disabled={isSending} className="col-start-2 row-start-2 rounded-full z-10 border-2 border-primary w-full h-full">
-                  <Home className="h-5 w-5" />
-                </Button>
-                <Button size="icon" variant="outline" onClick={() => handleMove('X', 1)} disabled={isSending} className="col-start-3 row-start-2 rounded-r-full rounded-l-none w-full h-full">
-                  <ArrowRight className="h-5 w-5" />
-                </Button>
-                <Button size="icon" variant="outline" onClick={() => handleMove('Y', -1)} disabled={isSending} className="col-start-2 row-start-3 rounded-b-full rounded-t-none w-full h-full">
-                  <ArrowDown className="h-5 w-5" />
-                </Button>
-              </div>
+            <div className="flex items-center justify-center pt-4">
+              <div className="flex items-center justify-center gap-x-6 p-4 border rounded-lg bg-muted/25">
+                {/* D-Pad Controls */}
+                <div className="grid grid-cols-3 grid-rows-3 w-36 h-36">
+                  <Button size="icon" variant="outline" onClick={() => handleMove('Y', 1)} disabled={isSending} className="col-start-2 row-start-1 rounded-t-full rounded-b-none w-full h-full">
+                    <ArrowUp className="h-5 w-5" />
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={() => handleMove('X', -1)} disabled={isSending} className="col-start-1 row-start-2 rounded-l-full rounded-r-none w-full h-full">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={handleQuickCommand("G28 X Y")} disabled={isSending} className="col-start-2 row-start-2 rounded-full z-10 border-2 border-primary w-full h-full">
+                    <Home className="h-5 w-5" />
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={() => handleMove('X', 1)} disabled={isSending} className="col-start-3 row-start-2 rounded-r-full rounded-l-none w-full h-full">
+                    <ArrowRight className="h-5 w-5" />
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={() => handleMove('Y', -1)} disabled={isSending} className="col-start-2 row-start-3 rounded-b-full rounded-t-none w-full h-full">
+                    <ArrowDown className="h-5 w-5" />
+                  </Button>
+                </div>
 
-              {/* Z Controls */}
-              <div className="flex flex-col items-center justify-center space-y-2">
-                <p className="text-sm font-medium text-muted-foreground mb-2">Z Axis</p>
-                <Button variant="outline" size="icon" onClick={() => handleMove('Z', 1)} disabled={isSending}><ArrowUp className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" onClick={handleQuickCommand("G28 Z")} disabled={isSending}><Home className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" onClick={() => handleMove('Z', -1)} disabled={isSending}><ArrowDown className="h-4 w-4" /></Button>
+                {/* Z Controls */}
+                <div className="flex flex-col items-center justify-center space-y-2 pl-6 border-l">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Z Axis</p>
+                  <Button variant="outline" size="icon" onClick={() => handleMove('Z', 1)} disabled={isSending}><ArrowUp className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" onClick={handleQuickCommand("G28 Z")} disabled={isSending}><Home className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" onClick={() => handleMove('Z', -1)} disabled={isSending}><ArrowDown className="h-4 w-4" /></Button>
+                </div>
               </div>
             </div>
             
