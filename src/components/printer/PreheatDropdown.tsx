@@ -54,12 +54,12 @@ const PreheatDropdown: React.FC<PreheatDropdownProps> = ({ printer }) => {
     }
     
     // Join commands with a newline for sequential execution
-    const combinedGcode = gcodeCommands.join('\\n');
+    const combinedGcode = gcodeCommands.join('\n');
     preheatMutation.mutate(combinedGcode);
   };
   
   const handleTurnOff = () => {
-    const turnOffGcode = "SET_HEATER_TEMPERATURE HEATER=extruder TARGET=0\\nSET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=0";
+    const turnOffGcode = "SET_HEATER_TEMPERATURE HEATER=extruder TARGET=0\nSET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=0";
     preheatMutation.mutate(turnOffGcode);
   };
 
