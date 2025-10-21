@@ -59,14 +59,29 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
   });
 
   const handleSubmit = (data: PrinterFormValues) => {
-    // The `data` object is the validated form output.
-    // We just need to add the printer's ID and ensure api_key is null if empty.
-    const updatePayload: Partial<Printer> = {
-      ...data,
-      id: printer.id,
-      api_key: data.api_key || null,
-    };
-    onSubmit(updatePayload);
+    const updates: Partial<Printer> = { id: printer.id };
+
+    if (data.name !== printer.name) {
+      updates.name = data.name;
+    }
+    if (data.base_url !== printer.base_url) {
+      updates.base_url = data.base_url;
+    }
+    
+    const oldApiKey = printer.api_key || "";
+    const newApiKey = data.api_key || "";
+    if (newApiKey !== oldApiKey) {
+      updates.api_key = newApiKey || null;
+    }
+
+    if (data.ai_failure_detection_enabled !== printer.ai_failure_detection_enabled) {
+      updates.ai_failure_detection_enabled = data.ai_failure_detection_enabled;
+    }
+
+    // Only submit if there are actual changes
+    if (Object.keys(updates).length > 1) {
+      onSubmit(updates);
+    }
   };
   
   return (
@@ -146,7 +161,7 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
           )}
         />
         
-        <Button type="submit" disabled={isSubmitting || !form.formState.isDirty || !form.formState.isValid}>
+        <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Changes
         </Button>
