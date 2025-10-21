@@ -5,11 +5,11 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package.json and install dependencies
-# Ensure package-lock.json is copied for deterministic builds
-COPY package.json package-lock.json ./
+# We only copy package.json to allow npm install to generate the lock file if missing
+COPY package.json ./
 RUN npm install
 
-# Copy source code and build
+# Copy remaining source code and build
 COPY . .
 RUN npm run build
 
