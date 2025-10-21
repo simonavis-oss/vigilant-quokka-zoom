@@ -30,6 +30,7 @@ import AutoDiscoverySuggestions from "./AutoDiscoverySuggestions";
 const validateUrlOrIp = (val: string) => {
   if (!val) return false;
   let urlToTest = val;
+  // Prepend http:// if missing for validation purposes
   if (!urlToTest.startsWith('http://') && !urlToTest.startsWith('https://')) {
     urlToTest = `http://${urlToTest}`;
   }
@@ -109,6 +110,7 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
       printerData.base_url = 'cloud'; // Placeholder
     } else {
       let finalBaseUrl = data.base_url!;
+      // Ensure protocol is present before saving
       if (!finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
         finalBaseUrl = `http://${finalBaseUrl}`;
       }
@@ -188,6 +190,19 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
                       <FormLabel>Printer Address (URL/IP)</FormLabel>
                       <FormControl>
                         <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="api_key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Moonraker API Key (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter API Key if required by your setup" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

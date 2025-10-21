@@ -84,6 +84,8 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
       onSubmit(updates);
     }
   };
+  
+  const connectionType = form.watch("connection_type");
 
   return (
     <Form {...form}>
@@ -108,7 +110,7 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
           render={({ field }) => (
             <FormItem>
               <FormLabel>Connection Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select connection type" />
@@ -131,14 +133,30 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
             <FormItem>
               <FormLabel>Printer Address (URL/IP)</FormLabel>
               <FormControl>
-                <Input placeholder="E.g., http://192.168.1.100:7125" {...field} />
+                <Input placeholder="E.g., http://192.168.1.100:7125" {...field} disabled={isSubmitting || connectionType === 'cloud_agent'} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+        
+        {connectionType === 'moonraker' && (
+          <FormField
+            control={form.control}
+            name="api_key"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Moonraker API Key (Optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter API Key if required by your setup" {...field} disabled={isSubmitting} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
-        {printer.connection_type === 'cloud_agent' && (
+        {connectionType === 'cloud_agent' && (
           <FormField
             control={form.control}
             name="ai_failure_detection_enabled"
@@ -154,6 +172,7 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
                   <Switch
                     checked={field.value}
                     onCheckedChange={field.onChange}
+                    disabled={isSubmitting}
                   />
                 </FormControl>
               </FormItem>
