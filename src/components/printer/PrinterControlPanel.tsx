@@ -63,38 +63,86 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Camera className="h-5 w-5 mr-2" /> Live View
+            <Move className="h-5 w-5 mr-2" /> Manual Control
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="aspect-video w-full bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
-            {printer.webcam_url ? (
-              <>
-                <img
-                  src={printer.webcam_url}
-                  alt="Webcam Stream"
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      const fallback = parent.querySelector('.fallback-icon');
-                      if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                    }
-                  }}
-                />
-                <div className="fallback-icon hidden flex-col items-center justify-center text-center p-4">
+        <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column: Webcam */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground flex items-center"><Camera className="h-4 w-4 mr-2" />Live View</p>
+            <div className="aspect-video w-full bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
+              {printer.webcam_url ? (
+                <>
+                  <img
+                    src={printer.webcam_url}
+                    alt="Webcam Stream"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        const fallback = parent.querySelector('.fallback-icon');
+                        if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                      }
+                    }}
+                  />
+                  <div className="fallback-icon hidden flex-col items-center justify-center text-center p-4">
+                    <VideoOff className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Stream failed to load.</p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center p-4">
                   <VideoOff className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Stream failed to load.</p>
+                  <p className="text-sm text-muted-foreground">No webcam URL configured.</p>
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center text-center p-4">
-                <VideoOff className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No webcam URL configured.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Movement Controls */}
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-muted-foreground">Movement (mm)</p>
+            <div className="flex justify-center">
+              <ToggleGroup 
+                type="single" 
+                value={moveDistance.toString()} 
+                onValueChange={(value) => setMoveDistance(parseFloat(value))}
+                className="border rounded-md p-1 bg-muted/50 w-full"
+              >
+                {MOVEMENT_DISTANCES.map(dist => (
+                  <ToggleGroupItem 
+                    key={dist} 
+                    value={dist.toString()} 
+                    aria-label={`Move ${dist}mm`}
+                    disabled={isSending}
+                    className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-8 px-3 text-sm flex-1"
+                  >
+                    {dist}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {/* X/Y Controls */}
+              <div className="col-span-2 grid grid-cols-3 grid-rows-3 gap-2">
+                <div className="col-start-2 row-start-1 flex justify-center"><Button size="icon" variant="outline" onClick={() => handleMove('Y', 1)} disabled={isSending}><ArrowUp className="h-4 w-4" /></Button></div>
+                <div className="col-start-1 row-start-2 flex justify-center"><Button size="icon" variant="outline" onClick={() => handleMove('X', -1)} disabled={isSending}><ArrowLeft className="h-4 w-4" /></Button></div>
+                <div className="col-start-2 row-start-2 flex justify-center"><Button size="icon" variant="outline" onClick={handleQuickCommand("G28 X Y")} disabled={isSending}><Home className="h-4 w-4" /></Button></div>
+                <div className="col-start-3 row-start-2 flex justify-center"><Button size="icon" variant="outline" onClick={() => handleMove('X', 1)} disabled={isSending}><ArrowRight className="h-4 w-4" /></Button></div>
+                <div className="col-start-2 row-start-3 flex justify-center"><Button size="icon" variant="outline" onClick={() => handleMove('Y', -1)} disabled={isSending}><ArrowDown className="h-4 w-4" /></Button></div>
               </div>
-            )}
+              {/* Z Controls */}
+              <div className="col-span-1 flex flex-col items-center justify-center space-y-2">
+                <Button variant="outline" size="icon" onClick={() => handleMove('Z', 1)} disabled={isSending}><ArrowUp className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={handleQuickCommand("G28 Z")} disabled={isSending}><Home className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => handleMove('Z', -1)} disabled={isSending}><ArrowDown className="h-4 w-4" /></Button>
+              </div>
+            </div>
+            <Button variant="secondary" className="w-full" onClick={handleQuickCommand("G28")} disabled={isSending}>
+              <Home className="h-4 w-4 mr-2" /> Home All Axes
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -117,78 +165,6 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
               {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
             </Button>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Move className="h-5 w-5 mr-2" /> Movement Controls (mm)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          
-          {/* Movement Distance Selection */}
-          <div className="flex justify-center">
-            <ToggleGroup 
-              type="single" 
-              value={moveDistance.toString()} 
-              onValueChange={(value) => setMoveDistance(parseFloat(value))}
-              className="border rounded-md p-1 bg-muted/50"
-            >
-              {MOVEMENT_DISTANCES.map(dist => (
-                <ToggleGroupItem 
-                  key={dist} 
-                  value={dist.toString()} 
-                  aria-label={`Move ${dist}mm`}
-                  disabled={isSending}
-                  className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-8 px-3 text-sm"
-                >
-                  {dist} mm
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-lg mx-auto">
-            
-            {/* Left Column: X/Y Controls (Directional Pad) */}
-            <div className="flex flex-col items-center space-y-2 p-4 border rounded-lg">
-              <p className="text-sm font-medium text-muted-foreground mb-2">X/Y Axis</p>
-              <div className="grid grid-cols-3 gap-2 w-full max-w-[150px]">
-                <div className="col-span-3 flex justify-center">
-                  <Button size="icon" variant="outline" onClick={() => handleMove('Y', 1)} disabled={isSending}><ArrowUp className="h-4 w-4" /></Button>
-                </div>
-                <Button size="icon" variant="outline" onClick={() => handleMove('X', -1)} disabled={isSending}><ArrowLeft className="h-4 w-4" /></Button>
-                <Button size="icon" variant="outline" onClick={handleQuickCommand("G28 X Y")} disabled={isSending}><Home className="h-4 w-4" /></Button>
-                <Button size="icon" variant="outline" onClick={() => handleMove('X', 1)} disabled={isSending}><ArrowRight className="h-4 w-4" /></Button>
-                <div className="col-span-3 flex justify-center">
-                  <Button size="icon" variant="outline" onClick={() => handleMove('Y', -1)} disabled={isSending}><ArrowDown className="h-4 w-4" /></Button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Right Column: Z Controls */}
-            <div className="flex flex-col items-center space-y-2 p-4 border rounded-lg">
-              <p className="text-sm font-medium text-muted-foreground mb-2">Z Axis</p>
-              <Button variant="outline" className="w-full" onClick={() => handleMove('Z', 1)} disabled={isSending}>
-                <ArrowUp className="h-4 w-4 mr-2" /> Z +{moveDistance} mm
-              </Button>
-              <Button variant="outline" className="w-full" onClick={() => handleMove('Z', -1)} disabled={isSending}>
-                <ArrowDown className="h-4 w-4 mr-2" /> Z -{moveDistance} mm
-              </Button>
-              <Button variant="secondary" className="w-full mt-4" onClick={handleQuickCommand("G28 Z")} disabled={isSending}>
-                <Home className="h-4 w-4 mr-2" /> Home Z
-              </Button>
-            </div>
-          </div>
-          
-          {/* Global Homing */}
-          <div className="pt-4 border-t flex justify-center">
-            <Button variant="secondary" onClick={handleQuickCommand("G28")} disabled={isSending}>
-              <Home className="h-4 w-4 mr-2" /> Home All Axes
-            </Button>
-          </div>
         </CardContent>
       </Card>
       
