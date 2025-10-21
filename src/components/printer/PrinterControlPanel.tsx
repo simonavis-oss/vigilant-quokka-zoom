@@ -2,19 +2,23 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Move, Thermometer, Loader2 } from "lucide-react";
+import { Send, Move, Thermometer, Loader2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { Printer } from "@/types/printer";
 import { sendPrinterCommand } from "@/integrations/supabase/functions";
 import PreheatDropdown from "./PreheatDropdown";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface PrinterControlPanelProps {
   printer: Printer;
 }
 
+const MOVEMENT_DISTANCES = [0.1, 1, 10, 50];
+
 const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) => {
   const [gcode, setGcode] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [moveDistance, setMoveDistance] = useState<number>(10); // Default movement distance in mm
 
   const handleSendGcode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +50,13 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
       setIsSending(false);
     }
   };
+  
+  const handleMove = (axis: 'X' | 'Y' | 'Z', direction: 1 | -1) => {
+    const distance = moveDistance * direction;
+    // G91 sets relative positioning, G0 performs the move
+    const command = `G91\\nG0 ${axis}${distance}`;
+    handleQuickCommand(command)();
+  };
 
   return (
     <div className="space-y-6">
@@ -73,15 +84,58 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Move className="h-5 w-5 mr-2" /> Movement Controls (Mock)
+            <Move className="h-5 w-5 mr-2" /> Movement Controls (mm)
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-4">
-          <Button variant="outline" onClick={handleQuickCommand("G28 X Y")} disabled={isSending}>Home X/Y</Button>
-          <Button variant="outline" onClick={handleQuickCommand("G28 Z")} disabled={isSending}>Home Z</Button>
-          <Button variant="outline" onClick={handleQuickCommand("G91\\nG0 X10")} disabled={isSending}>X +10</Button>
-          <Button variant="outline" onClick={handleQuickCommand("G91\\nG0 Y10")} disabled={isSending}>Y +10</Button>
-          <Button variant="outline" onClick={handleQuickCommand("G91\\nG0 Z1")} disabled={isSending}>Z +1</Button>
+        <CardContent className="space-y-4">
+          <div className="flex justify-center space-x-2">
+            <ToggleGroup 
+              type="single" 
+              value={moveDistance.toString()} 
+              onValueChange={(value) => setMoveDistance(parseFloat(value))}
+              className="w-full justify-center"
+            >
+              {MOVEMENT_DISTANCES.map(dist => (
+                <ToggleGroupItem 
+                  key={dist} 
+                  value={dist.toString()} 
+                  aria-label={`Move ${dist}mm`}
+                  disabled={isSending}
+                >
+                  {dist}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 max-w-xs mx-auto">
+            {/* X/Y Controls */}
+            <div className="col-span-3 flex justify-center">
+              <Button size="icon" variant="outline" onClick={() => handleMove('Y', 1)} disabled={isSending}><ArrowUp className="h-4 w-4" /></Button>
+            </div>
+            <Button size="icon" variant="outline" onClick={() => handleMove('X', -1)} disabled={isSending}><ArrowLeft className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" onClick={handleQuickCommand("G28")} disabled={isSending}><Home className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" onClick={() => handleMove('X', 1)} disabled={isSending}><ArrowRight className="h-4 w-4" /></Button>
+            <div className="col-span-3 flex justify-center">
+              <Button size="icon" variant="outline" onClick={() => handleMove('Y', -1)} disabled={isSending}><ArrowDown className="h-4 w-4" /></Button>
+            </div>
+          </div>
+          
+          {/* Z Controls */}
+          <div className="flex justify-center space-x-4 pt-4 border-t">
+            <Button variant="outline" onClick={() => handleMove('Z', 1)} disabled={isSending}>
+              <ArrowUp className="h-4 w-4 mr-2" /> Z +{moveDistance}
+            </Button>
+            <Button variant="outline" onClick={() => handleMove('Z', -1)} disabled={isSending}>
+              <ArrowDown className="h-4 w-4 mr-2" /> Z -{moveDistance}
+            </Button>
+          </div>
+          
+          {/* Quick Commands */}
+          <div className="grid grid-cols-2 gap-2 pt-4 border-t">
+            <Button variant="secondary" onClick={handleQuickCommand("G28 X Y")} disabled={isSending}>Home X/Y</Button>
+            <Button variant="secondary" onClick={handleQuickCommand("G28 Z")} disabled={isSending}>Home Z</Button>
+          </div>
         </CardContent>
       </Card>
       
