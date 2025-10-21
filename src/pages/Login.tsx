@@ -26,8 +26,8 @@ const Login = () => {
                 },
               },
             }}
-            theme="light" // We rely on Tailwind dark mode for overall theme, but Auth UI needs a base theme
-            view="sign_in"
+            theme="light"
+            view="sign_in" // Explicitly set to sign_in
           />
         </CardContent>
       </Card>
