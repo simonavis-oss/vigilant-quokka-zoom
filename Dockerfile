@@ -5,6 +5,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package.json and install dependencies
+# Ensure package-lock.json is copied for deterministic builds
 COPY package.json package-lock.json ./
 RUN npm install
 
