@@ -25,16 +25,13 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  const supabaseServiceRole = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Use RLS client
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
   
-  const { data: { user } } = await createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } }).auth.getUser();
-  if (!user) {
-    return new Response(JSON.stringify({ error: "Invalid user session" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
-  const { data: completedJob, error: findError } = await supabaseServiceRole
+  // Find the job that was printing on this printer (RLS ensures user ownership)
+  const { data: completedJob, error: findError } = await supabase
     .from("print_queue")
-    .select("*, printers(name)")
+    .select(`*, printers ( name )`)
     .eq("printer_id", printerId)
     .eq("status", "printing")
     .single();
@@ -46,7 +43,7 @@ serve(async (req) => {
   const duration = Math.round((new Date().getTime() - new Date(completedJob.assigned_at).getTime()) / 1000);
   
   // 1. Add to historical print_jobs table
-  await supabaseServiceRole.from("print_jobs").insert({
+  await supabase.from("print_jobs").insert({
     user_id: completedJob.user_id,
     printer_id: completedJob.printer_id,
     file_name: completedJob.file_name,
@@ -57,14 +54,13 @@ serve(async (req) => {
   });
 
   // 2. Update the job in the queue to 'completed' status
-  const { error: updateError } = await supabaseServiceRole
+  const { error: updateError } = await supabase
     .from("print_queue")
     .update({ status: 'completed' })
     .eq("id", completedJob.id);
 
   if (updateError) {
     console.error("Failed to update job to completed:", updateError);
-    // Don't stop, proceed to notify user anyway
   }
 
   // 3. Return success with job details for the UI toast

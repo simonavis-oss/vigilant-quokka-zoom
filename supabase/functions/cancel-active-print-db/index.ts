@@ -16,14 +16,14 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   
-  let jobId: string;
+  let printerId: string;
   let reason: string;
   try {
     const body = await req.json();
-    jobId = body.job_id;
+    printerId = body.printer_id;
     reason = body.reason;
-    if (!jobId || !reason) {
-      return new Response(JSON.stringify({ error: "Missing job ID or reason" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!printerId || !reason) {
+      return new Response(JSON.stringify({ error: "Missing printer ID or reason" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   } catch (e) {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -32,17 +32,16 @@ serve(async (req) => {
   // Use RLS client
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
   
-  // Fetch job details (RLS ensures user ownership)
-  const { data: job, error: jobError } = await supabase.from("print_queue").select("*").eq("id", jobId).single();
+  // Find the job that was printing on this printer (RLS ensures user ownership)
+  const { data: job, error: jobError } = await supabase.from("print_queue").select("*").eq("printer_id", printerId).eq("status", "printing").single();
 
-  if (jobError || !job || job.status === 'printing') {
-    // If it's printing, the user should use the client-side cancel button which calls the Moonraker API directly.
-    return new Response(JSON.stringify({ error: "Job not found, or it is currently printing (use the printer control panel to cancel active prints)." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (jobError || !job) {
+    return new Response(JSON.stringify({ error: "No active print job found to cancel for this printer." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
-  
-  // If it's pending/assigned, move it to history as cancelled
+
+  // Update Database
   const now = new Date();
-  const assignedAt = job.assigned_at ? new Date(job.assigned_at) : now;
+  const assignedAt = new Date(job.assigned_at);
   const durationSeconds = Math.round((now.getTime() - assignedAt.getTime()) / 1000);
 
   await supabase.from("print_jobs").insert({
@@ -52,7 +51,7 @@ serve(async (req) => {
     duration_seconds: durationSeconds > 0 ? durationSeconds : 0,
     status: 'cancelled',
     cancellation_reason: reason,
-    started_at: job.created_at, // Use created_at as start time for non-started jobs
+    started_at: job.assigned_at,
     finished_at: now.toISOString(),
   });
 
@@ -62,7 +61,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Failed to remove job from queue after cancellation" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  return new Response(JSON.stringify({ status: "success", message: `Job "${job.file_name}" has been cancelled.` }), {
+  return new Response(JSON.stringify({ status: "success", message: `Database updated for cancelled job "${job.file_name}".` }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
     status: 200,
   });

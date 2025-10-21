@@ -30,23 +30,17 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // 3. Initialize Supabase Clients
-  const supabaseServiceRole = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const supabaseAnon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
+  // 3. Initialize Supabase Client (using Anon key + Auth header for RLS)
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
   
-  // 4. Verify User and Printer
-  const { data: { user } } = await supabaseAnon.auth.getUser();
-  if (!user) {
-    return new Response(JSON.stringify({ error: "Invalid user session" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-  
-  const { data: printer, error: printerError } = await supabaseServiceRole.from("printers").select("id, name").eq("id", printerId).eq("user_id", user.id).single();
+  // 4. Verify Printer (RLS handles user ownership check implicitly)
+  const { data: printer, error: printerError } = await supabase.from("printers").select("name").eq("id", printerId).single();
   if (printerError || !printer) {
     return new Response(JSON.stringify({ error: "Printer not found or does not belong to user" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // 5. Update Queue Items in bulk
-  const { data: updatedJobs, error: updateError } = await supabaseServiceRole
+  // 5. Update Queue Items in bulk (RLS ensures only pending jobs owned by the user are updated)
+  const { data: updatedJobs, error: updateError } = await supabase
     .from("print_queue")
     .update({ 
       status: 'assigned', 
@@ -54,9 +48,8 @@ serve(async (req) => {
       assigned_at: new Date().toISOString()
     })
     .in("id", jobIds)
-    .eq("user_id", user.id) // Security check: only update jobs owned by the user
-    .eq("status", "pending") // Only assign pending jobs
-    .select();
+    .eq("status", "pending")
+    .select("id");
 
   if (updateError) {
     return new Response(JSON.stringify({ error: `Database error: ${updateError.message}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -30,38 +30,30 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // 3. Initialize Supabase Clients
-  const supabaseServiceRole = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const supabaseAnon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
+  // 3. Initialize Supabase Client (using Anon key + Auth header for RLS)
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
   
-  // 4. Verify User, Job, and Printer
-  const { data: { user } } = await supabaseAnon.auth.getUser();
-  if (!user) {
-    return new Response(JSON.stringify({ error: "Invalid user session" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-  
-  const { data: job, error: jobError } = await supabaseServiceRole.from("print_queue").select("id, status").eq("id", jobId).eq("user_id", user.id).single();
-  if (jobError || !job || job.status !== 'pending') {
-    return new Response(JSON.stringify({ error: "Job not found or not pending" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
-  const { data: printer, error: printerError } = await supabaseServiceRole.from("printers").select("id, name").eq("id", printerId).eq("user_id", user.id).single();
+  // 4. Verify User and Printer (RLS handles user ownership check implicitly)
+  const { data: printer, error: printerError } = await supabase.from("printers").select("name").eq("id", printerId).single();
   if (printerError || !printer) {
     return new Response(JSON.stringify({ error: "Printer not found or does not belong to user" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // 5. Update Queue Item
-  const { error: updateError } = await supabaseServiceRole
+  // 5. Update Queue Item (RLS ensures only pending jobs owned by the user are updated)
+  const { data: updatedJob, error: updateError } = await supabase
     .from("print_queue")
     .update({ 
       status: 'assigned', 
       printer_id: printerId,
       assigned_at: new Date().toISOString()
     })
-    .eq("id", jobId);
+    .eq("id", jobId)
+    .eq("status", "pending")
+    .select("id")
+    .single();
 
-  if (updateError) {
-    return new Response(JSON.stringify({ error: `Database error: ${updateError.message}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (updateError || !updatedJob) {
+    return new Response(JSON.stringify({ error: `Job not found, not pending, or database error: ${updateError?.message || 'Job not updated.'}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   
   // 6. Return Success
