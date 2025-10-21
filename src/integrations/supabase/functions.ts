@@ -14,6 +14,14 @@ export interface PrinterStatus {
   base_url: string;
 }
 
+export interface BedMesh {
+  profile_name: string;
+  mesh_min: [number, number];
+  mesh_max: [number, number];
+  probed_matrix: number[][];
+  mesh_matrix: number[][];
+}
+
 export interface CommandResponse {
   status: "success" | "error";
   message: string;
@@ -145,6 +153,18 @@ export const getPrinterStatus = async (printer: Printer): Promise<PrinterStatus>
     connection_type: printer.connection_type,
     base_url: printer.base_url,
   };
+};
+
+export const getBedMesh = async (printer: Printer): Promise<BedMesh> => {
+  const data = await callMoonrakerApi(
+    printer,
+    "/printer/objects/query?bed_mesh"
+  );
+  const bedMesh = data.result.status.bed_mesh;
+  if (!bedMesh || !bedMesh.probed_matrix || bedMesh.probed_matrix.length === 0) {
+    throw new Error("No bed mesh data found. Please run a calibration first.");
+  }
+  return bedMesh as BedMesh;
 };
 
 export const fetchTemperaturePresets = async (printer: Printer): Promise<TemperaturePreset[]> => {

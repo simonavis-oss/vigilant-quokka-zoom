@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { Profile } from "./queries"; // Import Profile type
 import { MaintenanceLog } from "@/types/maintenance";
+import { PrinterMacro } from "@/types/printer-macro";
 
 export const deletePrinter = async (printerId: string): Promise<void> => {
   const { error } = await supabase
@@ -78,4 +79,35 @@ export const insertMaintenanceLog = async (log: NewMaintenanceLog): Promise<Main
     throw new Error(`Failed to insert maintenance log: ${error.message}`);
   }
   return data as MaintenanceLog;
+};
+
+interface NewPrinterMacro {
+  printer_id: string;
+  user_id: string;
+  name: string;
+  gcode: string;
+}
+
+export const insertPrinterMacro = async (macro: NewPrinterMacro): Promise<PrinterMacro> => {
+  const { data, error } = await supabase
+    .from("printer_macros")
+    .insert(macro)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to insert macro: ${error.message}`);
+  }
+  return data as PrinterMacro;
+};
+
+export const deletePrinterMacro = async (macroId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("printer_macros")
+    .delete()
+    .eq("id", macroId);
+
+  if (error) {
+    throw new Error(`Failed to delete macro: ${error.message}`);
+  }
 };

@@ -2,7 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrintJob } from "@/types/print-job";
 import { PrintQueueItem } from "@/types/print-queue";
 import { Printer } from "@/types/printer";
-import { MaintenanceLog } from "@/types/maintenance"; // Import new type
+import { MaintenanceLog } from "@/types/maintenance";
+import { PrinterMacro } from "@/types/printer-macro"; // Import new type
 
 export interface Profile {
   id: string;
@@ -156,4 +157,20 @@ export const fetchMaintenanceLogs = async (printerId: string): Promise<Maintenan
     throw new Error(error.message);
   }
   return data as MaintenanceLog[];
+};
+
+export const fetchPrinterMacros = async (printerId: string): Promise<PrinterMacro[]> => {
+  const { data, error } = await supabase
+    .from("printer_macros")
+    .select("*")
+    .eq("printer_id", printerId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return [];
+    }
+    throw new Error(error.message);
+  }
+  return data as PrinterMacro[];
 };

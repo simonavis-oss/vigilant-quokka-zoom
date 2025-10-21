@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle, Play, Wrench, Wifi, WifiOff, Info } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle, Play, Wrench, Wifi, WifiOff, Info, Grid3x3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,8 @@ import PrintJobHistoryPanel from "@/components/printer/PrintJobHistoryPanel";
 import CancellationDialog from "@/components/CancellationDialog";
 import MaintenanceLogPanel from "@/components/printer/MaintenanceLogPanel";
 import { Badge } from "@/components/ui/badge";
+import BedMeshVisualizer from "@/components/printer/BedMeshVisualizer";
+import MacroManagementPanel from "@/components/printer/MacroManagementPanel";
 
 const fetchPrinterDetails = async (printerId: string): Promise<Printer> => {
   const { data, error } = await supabase.from("printers").select("*").eq("id", printerId).single();
@@ -132,9 +134,10 @@ const PrinterDetails = () => {
         isEmergencyStopPending={emergencyStopMutation.isPending}
       />
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-5 md:grid-cols-8">
           <TabsTrigger value="overview"><LayoutDashboard className="h-4 w-4 mr-2" />Overview</TabsTrigger>
           <TabsTrigger value="control"><Send className="h-4 w-4 mr-2" />Control</TabsTrigger>
+          <TabsTrigger value="calibration"><Grid3x3 className="h-4 w-4 mr-2" />Calibration</TabsTrigger>
           <TabsTrigger value="files"><FileText className="h-4 w-4 mr-2" />Files</TabsTrigger>
           <TabsTrigger value="history"><History className="h-4 w-4 mr-2" />History</TabsTrigger>
           <TabsTrigger value="maintenance"><Wrench className="h-4 w-4 mr-2" />Maintenance</TabsTrigger>
@@ -143,6 +146,10 @@ const PrinterDetails = () => {
         </TabsList>
         <TabsContent value="overview" className="mt-6"><PrinterOverviewTab printer={printer} /></TabsContent>
         <TabsContent value="control" className="mt-6"><PrinterControlPanel printer={printer} /></TabsContent>
+        <TabsContent value="calibration" className="mt-6 space-y-6">
+          <BedMeshVisualizer printer={printer} />
+          <MacroManagementPanel printer={printer} />
+        </TabsContent>
         <TabsContent value="files" className="mt-6"><PrinterFileManagementPanel printer={printer} /></TabsContent>
         <TabsContent value="history" className="mt-6"><PrintJobHistoryPanel printer={printer} /></TabsContent>
         <TabsContent value="maintenance" className="mt-6"><MaintenanceLogPanel printer={printer} /></TabsContent>
