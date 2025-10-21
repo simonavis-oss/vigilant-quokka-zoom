@@ -125,6 +125,12 @@ const AddJobToQueueDialog: React.FC = () => {
   };
 
   const isSubmitting = insertMutation.isPending || isUploading;
+  
+  const buttonText = isUploading 
+    ? `Uploading ${selectedFiles.length} file(s)...`
+    : insertMutation.isPending
+      ? "Adding jobs to queue..."
+      : `Upload & Add ${selectedFiles.length > 0 ? selectedFiles.length : ''} Job(s)`;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -204,7 +210,8 @@ const AddJobToQueueDialog: React.FC = () => {
               className="w-full" 
               disabled={isSubmitting || selectedFiles.length === 0}
             >
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Upload & Add ${selectedFiles.length > 0 ? selectedFiles.length : ''} Job(s)`}
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {buttonText}
             </Button>
           </form>
         </Form>
