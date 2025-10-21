@@ -48,7 +48,6 @@ export interface CompletionResponse {
 
 export interface BulkAssignmentResponse {
   status: "success" | "error";
-  message: string;
 }
 
 export interface PrinterFile {
@@ -255,7 +254,11 @@ export const startPrintJob = async (jobId: string): Promise<StartPrintResponse> 
 
   // 2. Send Start Command to Moonraker
   const printer: Printer = { ...job.printers, id: job.printer_id!, user_id: job.user_id, connection_type: 'moonraker', is_online: true, created_at: '', webcam_url: null, cloud_printer_id: null, cloud_last_seen: null, ai_failure_detection_enabled: false };
+  
+  // Moonraker expects the file path relative to its configured G-Code directory.
+  // We assume the file_name stored in the queue is the correct path/filename.
   const encodedFile = encodeURIComponent(job.file_name);
+  
   await callMoonrakerApi(printer, `/printer/print/start?filename=${encodedFile}`, 'POST');
 
   // 3. Update database status to 'printing'
