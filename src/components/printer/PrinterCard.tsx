@@ -7,17 +7,20 @@ import { Printer, Wifi, WifiOff, Settings, Camera, Brain } from "lucide-react";
 import { Printer as PrinterType } from "@/types/printer";
 import PrinterStatusDisplay from "./PrinterStatusDisplay";
 import { useQuery } from "@tanstack/react-query";
-import { getPrinterStatus } from "@/integrations/supabase/functions";
+import { getPrinterStatus, PrinterStatus } from "@/integrations/supabase/functions";
 
 interface PrinterCardProps {
   printer: PrinterType;
 }
 
 const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
-  const { data: status, isLoading } = useQuery({
+  const { data: status, isLoading } = useQuery<PrinterStatus>({
     queryKey: ["printerStatus", printer.id],
     queryFn: () => getPrinterStatus(printer),
   });
+  
+  // Use the real-time status from the query, defaulting to offline if data is missing/loading
+  const isOnline = status?.is_online ?? false;
 
   return (
     <Card className="hover:shadow-lg transition-shadow">
@@ -36,7 +39,7 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
           {printer.webcam_url && (
             <Camera className="h-4 w-4 text-muted-foreground" />
           )}
-          {printer.is_online ? (
+          {isOnline ? (
             <Wifi className="h-4 w-4 text-green-500" />
           ) : (
             <WifiOff className="h-4 w-4 text-red-500" />
@@ -47,8 +50,8 @@ const PrinterCard: React.FC<PrinterCardProps> = ({ printer }) => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Status:</span>
-            <Badge variant={printer.is_online ? "default" : "destructive"}>
-              {printer.is_online ? "Online" : "Offline"}
+            <Badge variant={isOnline ? "default" : "destructive"}>
+              {isOnline ? "Online" : "Offline"}
             </Badge>
           </div>
           

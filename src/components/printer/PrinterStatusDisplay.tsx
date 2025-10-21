@@ -17,7 +17,7 @@ const PrinterStatusDisplay: React.FC<PrinterStatusDisplayProps> = ({ status, isO
           <Badge variant="destructive">Offline</Badge>
           <WifiOff className="h-4 w-4 text-red-500" />
         </div>
-        <p className="text-xs text-destructive">Connection failed.</p>
+        <p className="text-xs text-destructive">Connection failed. Check URL/API Key.</p>
       </div>
     );
   }
@@ -27,14 +27,8 @@ const PrinterStatusDisplay: React.FC<PrinterStatusDisplayProps> = ({ status, isO
   return (
     <div className="space-y-3">
       <div className="flex items-center space-x-2">
-        <Badge variant={isOnline ? "default" : "destructive"}>
-          {isOnline ? "Online" : "Offline"}
-        </Badge>
-        {isOnline ? (
-          <Wifi className="h-4 w-4 text-green-500" />
-        ) : (
-          <WifiOff className="h-4 w-4 text-red-500" />
-        )}
+        <Badge variant="default">Online</Badge>
+        <Wifi className="h-4 w-4 text-green-500" />
       </div>
       
       <div className="text-sm text-muted-foreground">

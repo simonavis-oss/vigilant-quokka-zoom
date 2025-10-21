@@ -9,6 +9,7 @@ export interface PrinterStatus {
   time_remaining: string;
   nozzle_temp: string;
   bed_temp: string;
+  is_online: boolean; // Added explicit online status
 }
 
 export const getPrinterStatus = async (printer: Printer): Promise<PrinterStatus> => {
@@ -18,6 +19,7 @@ export const getPrinterStatus = async (printer: Printer): Promise<PrinterStatus>
     });
 
     if (!response.ok) {
+      // If the HTTP request succeeds but the printer API returns an error status (e.g., 404, 500)
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
@@ -35,10 +37,20 @@ export const getPrinterStatus = async (printer: Printer): Promise<PrinterStatus>
       time_remaining: printStats.print_duration ? formatTime(printStats.print_duration) : 'N/A',
       nozzle_temp: `${Math.round(extruder.temperature)}°C / ${Math.round(extruder.target)}°C`,
       bed_temp: `${Math.round(heaterBed.temperature)}°C / ${Math.round(heaterBed.target)}°C`,
+      is_online: true, // Successfully connected and got data
     };
   } catch (error) {
     console.error('Failed to fetch printer status:', error);
-    throw new Error('Failed to connect to printer');
+    // Return a default offline status object instead of throwing
+    return {
+      is_printing: false,
+      progress: 0,
+      file_name: 'Connection Failed',
+      time_remaining: 'N/A',
+      nozzle_temp: 'N/A',
+      bed_temp: 'N/A',
+      is_online: false,
+    };
   }
 };
 
