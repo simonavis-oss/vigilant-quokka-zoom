@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Move, Thermometer, Loader2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, Camera, ChevronDown } from "lucide-react";
+import { Send, Move, Thermometer, Loader2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, Camera, ChevronDown, Zap } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { Printer } from "@/types/printer";
 import { sendPrinterCommand } from "@/integrations/supabase/functions";
@@ -134,8 +134,9 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
                 </div>
               </div>
             </div>
-            <div className="pt-4 border-t flex justify-center">
+            <div className="pt-4 border-t flex justify-center space-x-2">
               <Button variant="secondary" onClick={handleQuickCommand("G28")} disabled={isSending}><Home className="h-4 w-4 mr-2" /> Home All Axes</Button>
+              <Button variant="secondary" onClick={handleQuickCommand("M84")} disabled={isSending}><Zap className="h-4 w-4 mr-2" /> Disable Steppers</Button>
             </div>
           </div>
         </CardContent>
