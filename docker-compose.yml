@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  farm-manager-ui:
+    container_name: farm-manager-ui
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      # Map container port 80 to host port 8080
+      - "8080:80"
+    restart: always
+    # Note: The Dockerfile uses multi-stage build with alpine images, 
+    # which are generally compatible with ARM architectures (like Raspberry Pi).
+    # If running on a non-standard Pi OS, you might need to specify platform: linux/arm/v7 or linux/arm64
