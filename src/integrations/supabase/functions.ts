@@ -109,7 +109,13 @@ export const getBedMesh = async (printer: Printer): Promise<any> => {
   return data.result.status.bed_mesh;
 };
 
-export const fetchTemperaturePresets = async (printer: Printer): Promise<any[]> => {
+export interface TemperaturePreset {
+  name: string;
+  extruder: number | null;
+  heater_bed: number | null;
+}
+
+export const fetchTemperaturePresets = async (printer: Printer): Promise<TemperaturePreset[]> => {
   // This would typically come from your printer configuration
   // For now, returning some common presets
   return [
@@ -120,7 +126,7 @@ export const fetchTemperaturePresets = async (printer: Printer): Promise<any[]> 
   ];
 };
 
-// New client-side function to handle file upload to Moonraker
+// Client-side function to handle file upload to Moonraker
 const uploadFileToPrinter = async (printer: Printer, fileName: string, storagePath: string): Promise<void> => {
   // 1. Download file from Supabase Storage
   const { data: fileBlob, error: downloadError } = await supabase.storage.from("gcode-files").download(storagePath);
@@ -152,12 +158,12 @@ const uploadFileToPrinter = async (printer: Printer, fileName: string, storagePa
   }
 };
 
-// New client-side function to handle the entire assignment process
+// Client-side function to handle the entire assignment process
 export const assignPrintJobClient = async (jobId: string, printerId: string): Promise<{ message: string }> => {
   // 1. Fetch job and printer details (we need storage_path and printer details)
   const { data: jobData, error: jobError } = await supabase
     .from("print_queue")
-    .select(`id, file_name, storage_path, printers ( base_url, api_key )`)
+    .select(`id, file_name, storage_path, printers ( base_url, api_key, name )`)
     .eq("id", jobId)
     .single();
 
@@ -186,22 +192,64 @@ export const assignPrintJobClient = async (jobId: string, printerId: string): Pr
   return { message: `File uploaded and job assigned to ${printer.name}.` };
 };
 
+// New client-side function to start the print job
+export const startPrintJobClient = async (jobId: string): Promise<{ message: string }> => {
+  // 1. Fetch job and printer details
+  const { data: jobData, error: jobError } = await supabase
+    .from("print_queue")
+    .select(`id, file_name, printer_id, printers ( base_url, api_key )`)
+    .eq("id", jobId)
+    .single();
 
-// The original assignPrintJob is now deprecated/replaced by assignPrintJobClient
-// We keep the function signature but update its implementation to use the new client-side logic
+  if (jobError || !jobData || !jobData.printer_id) {
+    throw new Error(`Assigned job not found or printer ID missing: ${jobError?.message}`);
+  }
+  
+  const printer = jobData.printers as Printer;
+  if (!printer) {
+    throw new Error("Printer details missing.");
+  }
+
+  // 2. Send Moonraker command to start print (assuming file is already uploaded during assignment)
+  const moonrakerUrl = `${printer.base_url}/printer/print/start`;
+  const headers = new Headers();
+  headers.append('Content-Type', 'application/json');
+  if (printer.api_key) {
+    headers.append("X-Api-Key", printer.api_key);
+  }
+
+  const startResponse = await fetch(moonrakerUrl, {
+    method: "POST",
+    headers: headers,
+    body: JSON.stringify({ filename: jobData.file_name }),
+  });
+
+  if (!startResponse.ok) {
+    const errorText = await startResponse.text();
+    throw new Error(`Failed to start print on printer: ${errorText}`);
+  }
+
+  // 3. Update database status via Edge Function
+  const { data, error } = await supabase.functions.invoke("start-print-job-db", {
+    body: { job_id: jobId },
+  });
+
+  if (error) {
+    const response = await error.context.json();
+    throw new Error(response.error || `Database Update Error: ${error.message}`);
+  }
+
+  return { message: `Print job "${jobData.file_name}" started successfully.` };
+};
+
+
+// --- Export Aliases ---
 export const assignPrintJob = assignPrintJobClient;
+export const startPrintJob = startPrintJobClient;
 
 
 export const bulkAssignPrintJobs = async (jobIds: string[], printerId: string): Promise<{ message: string }> => {
-  // Bulk assignment is complex to do client-side due to sequential file uploads. 
-  // For simplicity and to avoid blocking the UI for too long, we will keep bulk assignment 
-  // using the Edge Function for now, or simplify it to only update the DB status.
-  
-  // Since we moved the single assignment file transfer client-side, we should update bulk assignment 
-  // to only update the DB status as well, and assume the user will manually upload the files later, 
-  // or we need a more complex client-side loop.
-  
-  // For now, let's update bulk assignment to only update the DB status, similar to the new single assignment DB function.
+  // Bulk assignment remains DB-only update via Edge Function for simplicity
   const { data, error } = await supabase.functions.invoke("bulk-assign-jobs", {
     body: { job_ids: jobIds, printer_id: printerId },
   });
@@ -240,24 +288,26 @@ export const confirmBedCleared = async (jobId: string): Promise<{ message: strin
   return data;
 };
 
-export const startPrintJob = async (jobId: string): Promise<{ message: string }> => {
-  const { data, error } = await supabase.functions.invoke("start-print-job", {
-    body: { job_id: jobId },
-  });
-
-  if (error) {
-    const response = await error.context.json();
-    throw new Error(response.error || `Start Print Error: ${error.message}`);
-  }
-
-  return data;
-};
-
-export const checkBedClearance = async (printerId: string): Promise<{
+export interface BedClearanceResponse {
   is_clear: boolean;
   reason: string;
   snapshot_url?: string;
-}> => {
+}
+
+// Client-side function to check bed clearance (fetches printer details and calls Edge Function for AI)
+export const checkBedClearance = async (printerId: string): Promise<BedClearanceResponse> => {
+  // 1. Fetch printer details to ensure user has access (RLS handles this)
+  const { data: printerData, error: printerError } = await supabase
+    .from("printers")
+    .select(`id, webcam_url`)
+    .eq("id", printerId)
+    .single();
+
+  if (printerError || !printerData) {
+    throw new Error(`Printer not found or access denied: ${printerError?.message}`);
+  }
+
+  // 2. Call Edge Function for AI analysis (which handles snapshot capture, CV analysis, and storage upload)
   const { data, error } = await supabase.functions.invoke("check-bed-clearance", {
     body: { printer_id: printerId },
   });
@@ -267,17 +317,46 @@ export const checkBedClearance = async (printerId: string): Promise<{
     throw new Error(response.error || `Bed Clearance Check Error: ${error.message}`);
   }
 
-  return data;
+  return data as BedClearanceResponse;
 };
 
 export const cancelActivePrint = async (printerId: string, reason: string): Promise<{ message: string }> => {
+  // 1. Fetch printer details to get base_url and api_key
+  const { data: printerData, error: printerError } = await supabase
+    .from("printers")
+    .select(`base_url, api_key`)
+    .eq("id", printerId)
+    .single();
+
+  if (printerError || !printerData) {
+    throw new Error(`Printer not found or access denied: ${printerError?.message}`);
+  }
+
+  // 2. Send Moonraker command to cancel print
+  const moonrakerUrl = `${printerData.base_url}/printer/print/cancel`;
+  const headers = new Headers();
+  if (printerData.api_key) {
+    headers.append("X-Api-Key", printerData.api_key);
+  }
+
+  const cancelResponse = await fetch(moonrakerUrl, {
+    method: "POST",
+    headers: headers,
+  });
+
+  if (!cancelResponse.ok) {
+    const errorText = await cancelResponse.text();
+    throw new Error(`Failed to cancel print on printer: ${errorText}`);
+  }
+
+  // 3. Update database status via Edge Function
   const { data, error } = await supabase.functions.invoke("cancel-active-print-db", {
     body: { printer_id: printerId, reason },
   });
 
   if (error) {
     const response = await error.context.json();
-    throw new Error(response.error || `Cancel Print Error: ${error.message}`);
+    throw new Error(response.error || `Database Update Error: ${error.message}`);
   }
 
   return data;
@@ -300,7 +379,6 @@ export const handlePrintCompletion = async (printerId: string): Promise<{
   return data;
 };
 
-// Add this to your existing functions.ts file
 export const analyzePrintFailure = async (printerId: string): Promise<{
   is_failure: boolean;
   confidence: number;
