@@ -93,7 +93,7 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
             </div>
           </div>
           <div className="space-y-4">
-            <div>
+            <div className="flex flex-col items-center">
               <Label className="text-sm font-medium text-muted-foreground">Movement Distance (mm)</Label>
               <div className="flex items-center gap-2 mt-1">
                 <ToggleGroup type="single" value={customMoveValue ? "" : moveDistance.toString()} onValueChange={handleToggleChange} className="border rounded-md bg-muted/50">
