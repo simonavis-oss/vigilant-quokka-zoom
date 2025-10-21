@@ -4,6 +4,7 @@ import { PrintQueueItem } from "@/types/print-queue";
 interface NewPrintJob {
   user_id: string;
   file_name: string;
+  storage_path: string; // Added storage_path
   priority?: number;
 }
 
@@ -13,6 +14,7 @@ export const insertPrintJob = async (job: NewPrintJob): Promise<PrintQueueItem> 
     .insert({
       user_id: job.user_id,
       file_name: job.file_name,
+      storage_path: job.storage_path, // Add storage_path to insert
       priority: job.priority || 0,
       status: 'pending',
     })
@@ -30,6 +32,7 @@ export const insertMultiplePrintJobs = async (jobs: NewPrintJob[]): Promise<Prin
   const jobsToInsert = jobs.map(job => ({
     user_id: job.user_id,
     file_name: job.file_name,
+    storage_path: job.storage_path, // Add storage_path to insert
     priority: job.priority || 0,
     status: 'pending' as const,
   }));

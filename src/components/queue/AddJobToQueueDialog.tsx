@@ -24,16 +24,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { insertMultiplePrintJobs } from "@/integrations/supabase/queueMutations";
 import { useSession } from "@/context/SessionContext";
 import { showError, showSuccess } from "@/utils/toast";
-
-// --- Schemas ---
+import { supabase } from "@/integrations/supabase/client";
 
 const JobSchema = z.object({
   priority: z.coerce.number().min(0).max(100).default(10),
 });
 
 type JobFormValues = z.infer<typeof JobSchema>;
-
-// --- Component ---
 
 const AddJobToQueueDialog: React.FC = () => {
   const { user } = useSession();
@@ -44,9 +41,7 @@ const AddJobToQueueDialog: React.FC = () => {
 
   const form = useForm<JobFormValues>({
     resolver: zodResolver(JobSchema),
-    defaultValues: {
-      priority: 10,
-    },
+    defaultValues: { priority: 10 },
     mode: "onChange",
   });
 
@@ -58,12 +53,13 @@ const AddJobToQueueDialog: React.FC = () => {
       setIsOpen(false);
       form.reset();
       setSelectedFiles([]);
-      setIsUploading(false);
     },
     onError: (err) => {
       showError(`Failed to add jobs: ${err.message}`);
-      setIsUploading(false);
     },
+    onSettled: () => {
+      setIsUploading(false);
+    }
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,7 +84,7 @@ const AddJobToQueueDialog: React.FC = () => {
     }
   };
 
-  const onSubmit = (data: JobFormValues) => {
+  const onSubmit = async (data: JobFormValues) => {
     if (!user) {
       showError("User not authenticated.");
       return;
@@ -99,17 +95,33 @@ const AddJobToQueueDialog: React.FC = () => {
     }
     
     setIsUploading(true);
-    
-    const jobsToInsert = selectedFiles.map(file => ({
-      user_id: user.id,
-      file_name: file.name,
-      priority: data.priority,
-    }));
-    
-    // Simulate upload delay
-    setTimeout(() => {
+
+    try {
+      const uploadPromises = selectedFiles.map(async (file) => {
+        const filePath = `${user.id}/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('gcode-files')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+        }
+        
+        return {
+          user_id: user.id,
+          file_name: file.name,
+          storage_path: filePath,
+          priority: data.priority,
+        };
+      });
+
+      const jobsToInsert = await Promise.all(uploadPromises);
       insertMutation.mutate(jobsToInsert);
-    }, 1000);
+
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "An unknown error occurred during upload.");
+      setIsUploading(false);
+    }
   };
 
   const isSubmitting = insertMutation.isPending || isUploading;
@@ -123,7 +135,7 @@ const AddJobToQueueDialog: React.FC = () => {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Print Job(s)</DialogTitle>
+          <DialogTitle>Upload Print Job(s)</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -192,7 +204,7 @@ const AddJobToQueueDialog: React.FC = () => {
               className="w-full" 
               disabled={isSubmitting || selectedFiles.length === 0}
             >
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Add ${selectedFiles.length > 0 ? selectedFiles.length : ''} Job(s) to Queue`}
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Upload & Add ${selectedFiles.length > 0 ? selectedFiles.length : ''} Job(s)`}
             </Button>
           </form>
         </Form>
