@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Camera, Save, VideoOff, Loader2 } from "lucide-react";
+import { Camera, Save, Loader2 } from "lucide-react";
 import { Printer } from "@/types/printer";
 import { updatePrinter } from "@/integrations/supabase/mutations";
 import { showSuccess, showError } from "@/utils/toast";
+import WebcamStream from "./WebcamStream";
 
 const WebcamSchema = z.object({
   webcam_url: z.string().url("Must be a valid URL (e.g., http://...)").optional().or(z.literal("")),
@@ -59,22 +60,7 @@ const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="aspect-video w-full bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
-            {printer.webcam_url ? (
-              <img 
-                src={printer.webcam_url} 
-                alt="Webcam Stream" 
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <div className="text-center p-4">
-                <VideoOff className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  No webcam URL configured.
-                </p>
-              </div>
-            )}
-          </div>
+          <WebcamStream webcamUrl={printer.webcam_url} printerId={printer.id} />
         </CardContent>
       </Card>
 

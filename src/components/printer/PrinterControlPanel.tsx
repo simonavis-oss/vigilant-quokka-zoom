@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Move, Thermometer, Loader2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, Camera, VideoOff } from "lucide-react";
+import { Send, Move, Thermometer, Loader2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, Camera } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { Printer } from "@/types/printer";
 import { sendPrinterCommand } from "@/integrations/supabase/functions";
 import PreheatDropdown from "./PreheatDropdown";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Label } from "@/components/ui/label";
+import WebcamStream from "./WebcamStream";
 
 interface PrinterControlPanelProps {
   printer: Printer;
@@ -85,13 +86,7 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
         <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-muted-foreground flex items-center"><Camera className="h-4 w-4 mr-2" />Live View</Label>
-            <div className="aspect-video w-full bg-muted rounded-lg overflow-hidden flex items-center justify-center">
-              {printer.webcam_url ? (
-                <img src={printer.webcam_url} alt="Webcam Stream" className="w-full h-full object-contain" />
-              ) : (
-                <div className="text-center p-4"><VideoOff className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-sm text-muted-foreground">No webcam URL.</p></div>
-              )}
-            </div>
+            <WebcamStream webcamUrl={printer.webcam_url} printerId={printer.id} />
           </div>
           <div className="space-y-4">
             <div className="flex flex-col items-center">
