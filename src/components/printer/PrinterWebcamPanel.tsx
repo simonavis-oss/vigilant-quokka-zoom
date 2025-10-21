@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,7 +24,6 @@ interface PrinterWebcamPanelProps {
 
 const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
   const queryClient = useQueryClient();
-  const [streamUrl, setStreamUrl] = useState<string | null>(null);
   
   const form = useForm<WebcamFormValues>({
     resolver: zodResolver(WebcamSchema),
@@ -33,27 +32,6 @@ const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
     },
     mode: "onChange",
   });
-
-  useEffect(() => {
-    let intervalId: number | undefined;
-
-    if (printer.webcam_url) {
-      const updateUrl = () => {
-        // Append timestamp to prevent caching
-        setStreamUrl(`${printer.webcam_url}?_t=${new Date().getTime()}`);
-      };
-      updateUrl(); // Initial load
-      intervalId = setInterval(updateUrl, 2000); // Refresh every 2 seconds
-    } else {
-      setStreamUrl(null);
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [printer.webcam_url]);
 
   const updateMutation = useMutation({
     mutationFn: updatePrinter,
@@ -82,9 +60,9 @@ const PrinterWebcamPanel: React.FC<PrinterWebcamPanelProps> = ({ printer }) => {
         </CardHeader>
         <CardContent>
           <div className="aspect-video w-full bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
-            {streamUrl ? (
+            {printer.webcam_url ? (
               <img 
-                src={streamUrl} 
+                src={printer.webcam_url} 
                 alt="Webcam Stream" 
                 className="w-full h-full object-contain"
               />

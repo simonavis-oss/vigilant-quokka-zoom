@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,15 +21,6 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
   const [isSending, setIsSending] = useState(false);
   const [moveDistance, setMoveDistance] = useState<number>(10);
   const [customMoveValue, setCustomMoveValue] = useState<string>("");
-
-  useEffect(() => {
-    if (customMoveValue) {
-      const customNum = parseFloat(customMoveValue);
-      if (!isNaN(customNum) && customNum > 0) {
-        setMoveDistance(customNum);
-      }
-    }
-  }, [customMoveValue]);
 
   const handleSendGcode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,8 +51,9 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
   };
 
   const handleMove = (axis: 'X' | 'Y' | 'Z', direction: 1 | -1) => {
-    const distance = moveDistance * direction;
-    const command = `G91\\nG0 ${axis}${distance}`;
+    const distance = parseFloat(customMoveValue) || moveDistance;
+    const finalDistance = distance * direction;
+    const command = `G91\\nG0 ${axis}${finalDistance}`;
     handleQuickCommand(command)();
   };
 
@@ -69,6 +61,15 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
     if (value) {
       setMoveDistance(parseFloat(value));
       setCustomMoveValue("");
+    }
+  };
+
+  const handleCustomValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCustomMoveValue(value);
+    if (value) {
+      // Deselect any active toggle
+      setMoveDistance(0);
     }
   };
 
@@ -103,7 +104,7 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
                     </ToggleGroupItem>
                   ))}
                 </ToggleGroup>
-                <Input type="number" placeholder="Custom" value={customMoveValue} onChange={(e) => setCustomMoveValue(e.target.value)} className="h-9 w-24" disabled={isSending} />
+                <Input type="number" placeholder="Custom" value={customMoveValue} onChange={handleCustomValueChange} className="h-9 w-24" disabled={isSending} />
               </div>
             </div>
             <div className="flex items-center justify-center pt-4">
