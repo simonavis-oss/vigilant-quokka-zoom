@@ -6,6 +6,7 @@ import { Send, Move, Thermometer, Loader2 } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { Printer } from "@/types/printer";
 import { sendPrinterCommand } from "@/integrations/supabase/functions";
+import PreheatDropdown from "./PreheatDropdown";
 
 interface PrinterControlPanelProps {
   printer: Printer;
@@ -87,12 +88,11 @@ const PrinterControlPanel: React.FC<PrinterControlPanelProps> = ({ printer }) =>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Thermometer className="h-5 w-5 mr-2" /> Temperature Controls (Mock)
+            <Thermometer className="h-5 w-5 mr-2" /> Temperature Controls
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
-          <Button variant="outline" onClick={handleQuickCommand("M104 S200")} disabled={isSending}>Set Nozzle 200°C</Button>
-          <Button variant="outline" onClick={handleQuickCommand("M140 S60")} disabled={isSending}>Set Bed 60°C</Button>
+        <CardContent>
+          <PreheatDropdown printer={printer} />
         </CardContent>
       </Card>
     </div>

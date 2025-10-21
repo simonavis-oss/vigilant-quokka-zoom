@@ -56,6 +56,12 @@ export interface PrinterFile {
   size: number;
 }
 
+export interface TemperaturePreset {
+  name: string;
+  extruder: number;
+  heater_bed: number;
+}
+
 // --- Helper for Direct Moonraker Calls ---
 
 const callMoonrakerApi = async (
@@ -133,6 +139,22 @@ export const getPrinterStatus = async (printer: Printer): Promise<PrinterStatus>
     connection_type: printer.connection_type,
     base_url: printer.base_url,
   };
+};
+
+export const fetchTemperaturePresets = async (printer: Printer): Promise<TemperaturePreset[]> => {
+  const data = await callMoonrakerApi(
+    printer,
+    "/server/temperature_store"
+  );
+  
+  // Moonraker returns presets under data.result.presets
+  const presets = data.result.presets || {};
+  
+  return Object.entries(presets).map(([name, preset]: [string, any]) => ({
+    name,
+    extruder: preset.extruder || 0,
+    heater_bed: preset.heater_bed || 0,
+  }));
 };
 
 export const sendPrinterCommand = async (printer: Printer, command: string): Promise<CommandResponse> => {
