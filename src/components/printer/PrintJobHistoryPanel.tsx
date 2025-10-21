@@ -1,14 +1,21 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle, XCircle, AlertTriangle, Loader2, Info } from "lucide-react";
+import { Clock, CheckCircle, XCircle, AlertTriangle, Loader2, Info, Edit } from "lucide-react";
 import { Printer } from "@/types/printer";
-import { fetchPrintJobs, PrintJob } from "@/integrations/supabase/queries";
+import { fetchPrintJobs, PrintJob, fetchMaterials } from "@/integrations/supabase/queries";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import JobDetailsForm from "./JobDetailsForm";
+import { updatePrintJobDetails } from "@/integrations/supabase/mutations";
+import { showSuccess, showError } from "@/utils/toast";
+import { useSession } from "@/context/SessionContext";
+import { Material } from "@/types/material";
 
 interface PrintJobHistoryPanelProps {
   printer: Printer;
@@ -57,9 +64,31 @@ const getStatusBadge = (job: PrintJob) => {
 };
 
 const PrintJobHistoryPanel: React.FC<PrintJobHistoryPanelProps> = ({ printer }) => {
+  const { user } = useSession();
+  const queryClient = useQueryClient();
+  const [selectedJob, setSelectedJob] = useState<PrintJob | null>(null);
+
   const { data: jobs, isLoading, isError } = useQuery<PrintJob[]>({
     queryKey: ["printJobs", printer.id],
     queryFn: () => fetchPrintJobs(printer.id),
+  });
+
+  const { data: materials } = useQuery<Material[]>({
+    queryKey: ["materials", user?.id],
+    queryFn: () => fetchMaterials(user!.id),
+    enabled: !!user?.id && !!selectedJob,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: updatePrintJobDetails,
+    onSuccess: () => {
+      showSuccess("Job details updated.");
+      queryClient.invalidateQueries({ queryKey: ["printJobs", printer.id] });
+      queryClient.invalidateQueries({ queryKey: ["allPrintJobs"] });
+      queryClient.invalidateQueries({ queryKey: ["totalPrintCost"] });
+      setSelectedJob(null);
+    },
+    onError: (err) => showError(err.message),
   });
 
   if (isLoading) {
@@ -107,7 +136,9 @@ const PrintJobHistoryPanel: React.FC<PrintJobHistoryPanelProps> = ({ printer }) 
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Duration</TableHead>
                   <TableHead className="text-right">Material (g)</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
                   <TableHead className="text-right">Started At</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,7 +148,23 @@ const PrintJobHistoryPanel: React.FC<PrintJobHistoryPanelProps> = ({ printer }) 
                     <TableCell>{getStatusBadge(job)}</TableCell>
                     <TableCell className="text-right">{formatDuration(job.duration_seconds)}</TableCell>
                     <TableCell className="text-right">{job.material_used_grams?.toFixed(2) || 'N/A'}</TableCell>
+                    <TableCell className="text-right">{job.cost ? `$${job.cost.toFixed(2)}` : 'N/A'}</TableCell>
                     <TableCell className="text-right">{format(new Date(job.started_at), 'MMM dd, HH:mm')}</TableCell>
+                    <TableCell className="text-right">
+                      {job.status === 'success' && (
+                        <Dialog open={selectedJob?.id === job.id} onOpenChange={(isOpen) => !isOpen && setSelectedJob(null)}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => setSelectedJob(job)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader><DialogTitle>Log Job Details</DialogTitle></DialogHeader>
+                            {materials && <JobDetailsForm job={job} materials={materials} onSubmit={updateMutation.mutate} isSubmitting={updateMutation.isPending} />}
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

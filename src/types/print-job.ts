@@ -9,4 +9,6 @@ export type PrintJob = {
   cancellation_reason: string | null;
   started_at: string;
   finished_at: string | null;
+  material_id: string | null;
+  cost: number | null;
 };

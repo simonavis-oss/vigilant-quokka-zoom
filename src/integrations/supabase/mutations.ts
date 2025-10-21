@@ -4,6 +4,7 @@ import { Profile } from "./queries";
 import { MaintenanceLog } from "@/types/maintenance";
 import { PrinterMacro } from "@/types/printer-macro";
 import { Material } from "@/types/material";
+import { PrintJob } from "@/types/print-job";
 
 export const deletePrinter = async (printerId: string): Promise<void> => {
   const { error } = await supabase.from("printers").delete().eq("id", printerId);
@@ -79,4 +80,11 @@ export const assignMaterialToSlot = async (params: AssignMaterialParams) => {
 export const clearMaterialFromSlot = async (printerMaterialId: string) => {
   const { error } = await supabase.from("printer_materials").delete().eq("id", printerMaterialId);
   if (error) throw new Error(`Failed to clear material slot: ${error.message}`);
+};
+
+export const updatePrintJobDetails = async (job: Partial<PrintJob>): Promise<void> => {
+  const { id, ...updates } = job;
+  if (!id) throw new Error("Job ID is required for update.");
+  const { error } = await supabase.from("print_jobs").update(updates).eq("id", id);
+  if (error) throw new Error(`Failed to update job details: ${error.message}`);
 };

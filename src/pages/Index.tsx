@@ -6,6 +6,7 @@ import { PrintJob } from "@/types/print-job";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFarmStatus } from "@/hooks/use-farm-status";
 import { useTotalPrintTime } from "@/hooks/use-total-print-time";
+import { useTotalPrintCost } from "@/hooks/use-total-print-cost";
 import {
   fetchPrinters,
   fetchAllPrintJobsForUser,
@@ -14,7 +15,7 @@ import {
 } from "@/integrations/supabase/queries";
 import DashboardAnalytics from "@/components/dashboard/DashboardAnalytics";
 import { Link } from "react-router-dom";
-import { Printer as PrinterIcon, Wifi, PlayCircle, Clock } from "lucide-react";
+import { Printer as PrinterIcon, Wifi, PlayCircle, Clock, DollarSign } from "lucide-react";
 
 const Index = () => {
   const { user } = useSession();
@@ -48,9 +49,10 @@ const Index = () => {
     isLoading: isStatusLoading,
   } = useFarmStatus(printers);
   const { totalPrintTime, isLoading: isTimeLoading } = useTotalPrintTime();
+  const { totalPrintCost, isLoading: isCostLoading } = useTotalPrintCost();
 
   const isLoading =
-    isPrintersLoading || isStatusLoading || isTimeLoading || isJobsLoading;
+    isPrintersLoading || isStatusLoading || isTimeLoading || isJobsLoading || isCostLoading;
   
   const showAnalytics = profile?.enable_advanced_metrics ?? true;
 
@@ -63,8 +65,8 @@ const Index = () => {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Link to="/printers">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Link to="/printers" className="lg:col-span-1">
           <Card className="hover:shadow-md hover:-translate-y-1 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Printers</CardTitle>
@@ -76,7 +78,7 @@ const Index = () => {
             </CardContent>
           </Card>
         </Link>
-        <Link to="/printers">
+        <Link to="/printers" className="lg:col-span-1">
           <Card className="hover:shadow-md hover:-translate-y-1 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Printers Online</CardTitle>
@@ -88,7 +90,7 @@ const Index = () => {
             </CardContent>
           </Card>
         </Link>
-        <Link to="/queue">
+        <Link to="/queue" className="lg:col-span-1">
           <Card className="hover:shadow-md hover:-translate-y-1 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Prints</CardTitle>
@@ -100,7 +102,7 @@ const Index = () => {
             </CardContent>
           </Card>
         </Link>
-        <Card>
+        <Card className="lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Print Time</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -108,6 +110,16 @@ const Index = () => {
           <CardContent>
             <div className="text-2xl font-bold">{isTimeLoading ? <Skeleton className="h-8 w-24" /> : totalPrintTime}</div>
             <p className="text-xs text-muted-foreground">Accumulated time on successful prints.</p>
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Print Cost</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{isCostLoading ? <Skeleton className="h-8 w-24" /> : totalPrintCost}</div>
+            <p className="text-xs text-muted-foreground">Estimated cost from logged prints.</p>
           </CardContent>
         </Card>
       </div>
