@@ -1,13 +1,13 @@
 import React, { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Printer } from "@/types/printer";
-import { fetchPrinterDetails, updatePrinter } from "@/integrations/supabase/mutations";
+import { fetchPrinterDetails, updatePrinter, deletePrinter } from "@/integrations/supabase/mutations";
 import { fetchPrintJobs } from "@/integrations/supabase/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer as PrinterIcon, Settings, History, Camera, BarChart3, Brain } from "lucide-react";
+import { Printer as PrinterIcon, Settings, History, Camera, BarChart3, Brain, Trash2 } from "lucide-react";
 import PrinterStatusDisplay from "@/components/printer/PrinterStatusDisplay";
 import PrinterControlPanel from "@/components/printer/PrinterControlPanel";
 import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
@@ -22,11 +22,15 @@ import PrinterEditForm from "@/components/printer/PrinterEditForm";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAIFailureDetection } from "@/hooks/useAIFailureDetection";
+import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
+import { showSuccess, showError } from "@/utils/toast";
 
 const PrinterDetails = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: printer, isLoading: isPrinterLoading, isError: isPrinterError } = useQuery<Printer>({
     queryKey: ["printerDetails", id],
@@ -47,9 +51,40 @@ const PrinterDetails = () => {
     interval: 30,
   });
 
-  const handlePrinterUpdated = () => {
-    setIsEditOpen(false);
-    queryClient.invalidateQueries({ queryKey: ["printerDetails", id] });
+  const updateMutation = useMutation({
+    mutationFn: updatePrinter,
+    onSuccess: () => {
+      showSuccess("Printer settings updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["printerDetails", id] });
+      setIsEditOpen(false);
+      setIsSubmitting(false);
+    },
+    onError: (err) => {
+      showError(err.message);
+      setIsSubmitting(false);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deletePrinter,
+    onSuccess: () => {
+      showSuccess("Printer deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["printers"] });
+      navigate("/printers");
+    },
+    onError: (err) => {
+      showError(err.message);
+    },
+  });
+
+  const handlePrinterUpdated = (updates: Partial<Printer>) => {
+    setIsSubmitting(true);
+    updateMutation.mutate(updates);
+  };
+
+  const handleDeletePrinter = () => {
+    if (!printer) return;
+    deleteMutation.mutate(printer.id);
   };
 
   if (isPrinterLoading) {
@@ -76,23 +111,35 @@ const PrinterDetails = () => {
         <h1 className="text-3xl font-bold flex items-center">
           <PrinterIcon className="h-7 w-7 mr-3" /> {printer.name}
         </h1>
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline">
-              <Settings className="h-4 w-4 mr-2" /> Edit Printer
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Printer Settings</DialogTitle>
-            </DialogHeader>
-            <PrinterEditForm 
-              printer={printer} 
-              onSubmit={handlePrinterUpdated} 
-              isSubmitting={false} 
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center space-x-2">
+          <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Settings className="h-4 w-4 mr-2" /> Edit Printer
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Printer Settings</DialogTitle>
+              </DialogHeader>
+              <PrinterEditForm 
+                printer={printer} 
+                onSubmit={handlePrinterUpdated} 
+                isSubmitting={isSubmitting} 
+              />
+            </DialogContent>
+          </Dialog>
+          <DeleteConfirmationDialog
+            onConfirm={handleDeletePrinter}
+            title={`Delete printer "${printer.name}"?`}
+            description="This will permanently remove the printer and all associated data. This action cannot be undone."
+            triggerButton={
+              <Button variant="destructive">
+                <Trash2 className="h-4 w-4 mr-2" /> Delete Printer
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
