@@ -22,7 +22,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/SessionContext";
 import { showSuccess, showError } from "@/utils/toast";
-import { Loader2, PlusCircle, Cloud } from "lucide-react";
+import { Loader2, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AutoDiscoverySuggestions from "./AutoDiscoverySuggestions";
 
@@ -44,26 +44,16 @@ const validateUrlOrIp = (val: string) => {
 
 const PrinterSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "cloud_agent"], {
-    required_error: "Please select a connection type.",
-  }),
-  base_url: z.string().optional(),
+  connection_type: z.literal("moonraker"),
+  base_url: z.string().min(1, "Printer address is required."),
   api_key: z.string().optional(),
 }).superRefine((data, ctx) => {
-  if (data.connection_type !== 'cloud_agent') {
-    if (!data.base_url) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["base_url"],
-        message: "Printer address is required for this connection type.",
-      });
-    } else if (!validateUrlOrIp(data.base_url)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["base_url"],
-        message: "Must be a valid URL or IP address (e.g., 192.168.1.100:7125).",
-      });
-    }
+  if (!validateUrlOrIp(data.base_url)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["base_url"],
+      message: "Must be a valid URL or IP address (e.g., 192.168.1.100:7125).",
+    });
   }
 });
 
@@ -86,7 +76,6 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
     mode: "onChange",
   });
   
-  const connectionType = form.watch("connection_type");
   const isSubmitting = form.formState.isSubmitting;
 
   const handleSelectSuggestion = (url: string) => {
@@ -99,24 +88,20 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
       return;
     }
 
-    let printerData: any = {
+    let finalBaseUrl = data.base_url!;
+    // Ensure protocol is present before saving
+    if (!finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
+      finalBaseUrl = `http://${finalBaseUrl}`;
+    }
+
+    const printerData: any = {
       user_id: user.id,
       name: data.name,
       connection_type: data.connection_type,
+      base_url: finalBaseUrl,
+      api_key: data.api_key || null,
+      cloud_printer_id: null, // Ensure cloud fields are null
     };
-
-    if (data.connection_type === 'cloud_agent') {
-      printerData.cloud_printer_id = crypto.randomUUID();
-      printerData.base_url = 'cloud'; // Placeholder
-    } else {
-      let finalBaseUrl = data.base_url!;
-      // Ensure protocol is present before saving
-      if (!finalBaseUrl.startsWith('http://') && !finalBaseUrl.startsWith('https://')) {
-        finalBaseUrl = `http://${finalBaseUrl}`;
-      }
-      printerData.base_url = finalBaseUrl;
-      printerData.api_key = data.api_key || null;
-    }
 
     const { error } = await supabase.from("printers").insert(printerData);
 
@@ -156,61 +141,31 @@ const AddPrinterForm: React.FC<AddPrinterFormProps> = ({ onPrinterAdded }) => {
             
             <FormField
               control={form.control}
-              name="connection_type"
+              name="base_url"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Connection Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select connection type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="moonraker">Local Network (Moonraker)</SelectItem>
-                      <SelectItem value="cloud_agent"><div className="flex items-center">Cloud Agent<Cloud className="ml-2 h-4 w-4 text-blue-500"/></div></SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Printer Address (URL/IP)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
-            {connectionType === 'cloud_agent' ? (
-              <div className="p-4 border rounded-lg bg-muted/50 text-sm text-muted-foreground">
-                After creating the printer, you will be provided with a setup script to run on a device (like a Raspberry Pi) on your printer's local network.
-              </div>
-            ) : (
-              <>
-                <FormField
-                  control={form.control}
-                  name="base_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Printer Address (URL/IP)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="E.g., 192.168.1.100:7125 or http://printer.local" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="api_key"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Moonraker API Key (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter API Key if required by your setup" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <AutoDiscoverySuggestions onSelect={handleSelectSuggestion} />
-              </>
-            )}
+            <FormField
+              control={form.control}
+              name="api_key"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Moonraker API Key (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter API Key if required by your setup" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <AutoDiscoverySuggestions onSelect={handleSelectSuggestion} />
 
             <Button 
               type="submit" 

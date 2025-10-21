@@ -21,16 +21,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Printer } from "@/types/printer";
-import { Loader2, Cloud } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 // --- Schemas ---
 
 const PrinterEditSchema = z.object({
   name: z.string().min(1, "Printer name is required."),
-  connection_type: z.enum(["moonraker", "cloud_agent"], {
-    required_error: "Please select a connection type.",
-  }),
+  connection_type: z.literal("moonraker"),
   base_url: z.preprocess(
     (val) => {
       if (typeof val === 'string' && val.length > 0 && !val.startsWith('http://') && !val.startsWith('https://')) {
@@ -71,7 +69,6 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
     const updates: Partial<Printer> = { id: printer.id };
     
     if (data.name !== printer.name) updates.name = data.name;
-    if (data.connection_type !== printer.connection_type) updates.connection_type = data.connection_type;
     if (data.base_url !== printer.base_url) updates.base_url = data.base_url;
     if (data.ai_failure_detection_enabled !== printer.ai_failure_detection_enabled) {
       updates.ai_failure_detection_enabled = data.ai_failure_detection_enabled;
@@ -79,6 +76,9 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
     
     const newApiKey = data.api_key || null;
     if (newApiKey !== printer.api_key) updates.api_key = newApiKey;
+
+    // connection_type is fixed to 'moonraker' now, no need to check or update it
+    updates.connection_type = 'moonraker';
 
     if (Object.keys(updates).length > 1) {
       onSubmit(updates);
@@ -104,27 +104,15 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
           )}
         />
         
-        <FormField
-          control={form.control}
-          name="connection_type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Connection Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select connection type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="moonraker">Moonraker / Mainsail / Fluid (Recommended)</SelectItem>
-                  <SelectItem value="cloud_agent"><div className="flex items-center">Cloud Agent<Cloud className="ml-2 h-4 w-4 text-blue-500"/></div></SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <FormItem>
+          <FormLabel>Connection Type</FormLabel>
+          <div className="p-3 border rounded-lg bg-muted/50 text-sm font-medium">
+            Local Network (Moonraker)
+          </div>
+          <FormDescription>
+            The system is configured for local network communication only.
+          </FormDescription>
+        </FormItem>
         
         <FormField
           control={form.control}
@@ -133,52 +121,48 @@ const PrinterEditForm: React.FC<PrinterEditFormProps> = ({ printer, onSubmit, is
             <FormItem>
               <FormLabel>Printer Address (URL/IP)</FormLabel>
               <FormControl>
-                <Input placeholder="E.g., http://192.168.1.100:7125" {...field} disabled={isSubmitting || connectionType === 'cloud_agent'} />
+                <Input placeholder="E.g., http://192.168.1.100:7125" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         
-        {connectionType === 'moonraker' && (
-          <FormField
-            control={form.control}
-            name="api_key"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Moonraker API Key (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter API Key if required by your setup" {...field} disabled={isSubmitting} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+        <FormField
+          control={form.control}
+          name="api_key"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Moonraker API Key (Optional)</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter API Key if required by your setup" {...field} disabled={isSubmitting} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        {connectionType === 'cloud_agent' && (
-          <FormField
-            control={form.control}
-            name="ai_failure_detection_enabled"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">AI Failure Detection</FormLabel>
-                  <FormDescription>
-                    Requires a webcam. The cloud agent will monitor the print for failures.
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={isSubmitting}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        )}
+        <FormField
+          control={form.control}
+          name="ai_failure_detection_enabled"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">AI Failure Detection</FormLabel>
+                <FormDescription>
+                  Requires a webcam. The system will monitor the print for failures.
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
         
         <Button type="submit" disabled={isSubmitting || !form.formState.isDirty || !form.formState.isValid}>
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -2,7 +2,7 @@ export type Printer = {
   id: string;
   user_id: string;
   name: string;
-  connection_type: 'moonraker' | 'cloud_agent';
+  connection_type: 'moonraker';
   base_url: string;
   api_key: string | null;
   is_online: boolean;

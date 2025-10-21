@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError, showSuccess } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle, Play, Cloud, Wrench } from "lucide-react";
+import { ArrowLeft, Settings, Camera, Zap, LayoutDashboard, Send, Loader2, Trash2, CheckCircle, FileText, History, Pause, XCircle, Play, Wrench } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +19,6 @@ import PrinterWebcamPanel from "@/components/printer/PrinterWebcamPanel";
 import PrinterFileManagementPanel from "@/components/printer/PrinterFileManagementPanel";
 import PrintJobHistoryPanel from "@/components/printer/PrintJobHistoryPanel";
 import CancellationDialog from "@/components/CancellationDialog";
-import CloudPrinterSetup from "@/components/printer/CloudPrinterSetup";
 import MaintenanceLogPanel from "@/components/printer/MaintenanceLogPanel"; // Import new component
 
 // --- Data Fetching ---
@@ -80,7 +79,7 @@ const PrinterOverviewTab = ({ printer }: { printer: Printer }) => {
   }
 
   if (isStatusError || !status) {
-    return <Card><CardHeader><CardTitle>Real-time Status</CardTitle></CardHeader><CardContent><p className="text-destructive">Connection Error</p><p className="text-muted-foreground text-sm mt-1">Could not retrieve status. For local printers, check the connection URL. For cloud printers, ensure the agent is running.</p></CardContent></Card>;
+    return <Card><CardHeader><CardTitle>Real-time Status</CardTitle></CardHeader><CardContent><p className="text-destructive">Connection Error</p><p className="text-muted-foreground text-sm mt-1">Could not retrieve status. Check the connection URL in settings.</p></CardContent></Card>;
   }
   
   const statusText = status.is_printing ? (status.is_paused ? `Paused (${status.progress}%)` : `Printing (${status.progress}%)`) : "Idle";
@@ -127,7 +126,7 @@ const PrinterDetails = () => {
     onSuccess: () => {
       showSuccess(`Printer "${printer?.name}" successfully removed.`);
       queryClient.invalidateQueries({ queryKey: ["printers"] });
-      navigate("/", { replace: true });
+      navigate("/printers", { replace: true });
     },
     onError: (err) => showError(err.message),
   });
@@ -163,14 +162,12 @@ const PrinterDetails = () => {
 
   if (isError) {
     showError(`Error loading printer: ${error.message}`);
-    return <div className="text-center p-8"><h2 className="text-xl font-semibold text-destructive">Error</h2><p className="text-muted-foreground">Could not load printer details.</p><Button onClick={() => navigate("/")} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Button></div>;
+    return <div className="text-center p-8"><h2 className="text-xl font-semibold text-destructive">Error</h2><p className="text-muted-foreground">Could not load printer details.</p><Button onClick={() => navigate("/printers")} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Printers</Button></div>;
   }
 
   if (!printer) {
-    return <div className="text-center p-8"><h2 className="text-xl font-semibold">Printer Not Found</h2><p className="text-muted-foreground">The requested printer does not exist.</p><Button onClick={() => navigate("/")} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Button></div>;
+    return <div className="text-center p-8"><h2 className="text-xl font-semibold">Printer Not Found</h2><p className="text-muted-foreground">The requested printer does not exist.</p><Button onClick={() => navigate("/printers")} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Printers</Button></div>;
   }
-
-  const isCloudPrinter = printer.connection_type === 'cloud_agent';
 
   return (
     <div className="space-y-6">
@@ -187,29 +184,27 @@ const PrinterDetails = () => {
           <TabsTrigger value="history"><History className="h-4 w-4 mr-2" /> History</TabsTrigger>
           <TabsTrigger value="maintenance"><Wrench className="h-4 w-4 mr-2" /> Maintenance</TabsTrigger>
           <TabsTrigger value="webcam"><Camera className="h-4 w-4 mr-2" /> Webcam</TabsTrigger>
-          <TabsTrigger value="settings">{isCloudPrinter ? <Cloud className="h-4 w-4 mr-2" /> : <Settings className="h-4 w-4 mr-2" />} Settings</TabsTrigger>
+          <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-2" /> Settings</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="mt-6"><PrinterOverviewTab printer={printer} /></TabsContent>
         <TabsContent value="control" className="mt-6"><PrinterControlPanel printer={printer} /></TabsContent>
         <TabsContent value="files" className="mt-6"><PrinterFileManagementPanel printer={printer} /></TabsContent>
         <TabsContent value="history" className="mt-6"><PrintJobHistoryPanel printer={printer} /></TabsContent>
-        <TabsContent value="maintenance" className="mt-6"><MaintenanceLogPanel printer={printer} /></TabsContent> {/* New Tab */}
+        <TabsContent value="maintenance" className="mt-6"><MaintenanceLogPanel printer={printer} /></TabsContent>
         <TabsContent value="webcam" className="mt-6"><PrinterWebcamPanel printer={printer} /></TabsContent>
         <TabsContent value="settings" className="mt-6 space-y-6">
-          {isCloudPrinter ? <CloudPrinterSetup printer={printer} /> : (
-            <Card>
-              <CardHeader><CardTitle>Printer Configuration</CardTitle></CardHeader>
-              <CardContent>
-                <PrinterEditForm printer={printer} onSubmit={(updates) => updateMutation.mutate(updates)} isSubmitting={updateMutation.isPending} />
-                <div className="mt-6 pt-6 border-t">
-                  <h3 className="text-lg font-semibold mb-2">Connection Test</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Verify communication with your printer.</p>
-                  <Button onClick={() => testConnectionMutation.mutate(printer)} disabled={testConnectionMutation.isPending}>{testConnectionMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}Test Connection</Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader><CardTitle>Printer Configuration</CardTitle></CardHeader>
+            <CardContent>
+              <PrinterEditForm printer={printer} onSubmit={(updates) => updateMutation.mutate(updates)} isSubmitting={updateMutation.isPending} />
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="text-lg font-semibold mb-2">Connection Test</h3>
+                <p className="text-sm text-muted-foreground mb-4">Verify communication with your printer.</p>
+                <Button onClick={() => testConnectionMutation.mutate(printer)} disabled={testConnectionMutation.isPending}>{testConnectionMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}Test Connection</Button>
+              </div>
+            </CardContent>
+          </Card>
           <Card className="border-destructive">
             <CardHeader><CardTitle className="text-destructive">Danger Zone</CardTitle></CardHeader>
             <CardContent>
