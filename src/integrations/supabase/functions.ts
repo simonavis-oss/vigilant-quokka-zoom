@@ -2,6 +2,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Printer } from "@/types/printer";
 import { showError } from "@/utils/toast";
 
+// Helper to ensure the URL has a protocol for fetch to work correctly
+const ensureProtocol = (url: string): string => {
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // Default to http:// for local network connections if no protocol is specified
+  return `http://${url}`;
+};
+
 export interface PrinterStatus {
   is_printing: boolean;
   progress: number;
@@ -13,8 +22,9 @@ export interface PrinterStatus {
 }
 
 export const getPrinterStatus = async (printer: Printer): Promise<PrinterStatus> => {
+  const baseUrl = ensureProtocol(printer.base_url);
   try {
-    const response = await fetch(`${printer.base_url}/printer/objects/query?objects=print_stats,gcode_move,extruder,heater_bed`, {
+    const response = await fetch(`${baseUrl}/printer/objects/query?objects=print_stats,gcode_move,extruder,heater_bed`, {
       headers: printer.api_key ? { 'X-Api-Key': printer.api_key } : {},
     });
 
@@ -69,7 +79,8 @@ const formatTime = (seconds: number): string => {
 };
 
 export const sendPrinterCommand = async (printer: Printer, command: string): Promise<void> => {
-  const response = await fetch(`${printer.base_url}/printer/gcode/script`, {
+  const baseUrl = ensureProtocol(printer.base_url);
+  const response = await fetch(`${baseUrl}/printer/gcode/script`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -84,7 +95,8 @@ export const sendPrinterCommand = async (printer: Printer, command: string): Pro
 };
 
 export const listPrinterFiles = async (printer: Printer): Promise<any[]> => {
-  const response = await fetch(`${printer.base_url}/server/files/list?root=gcodes`, {
+  const baseUrl = ensureProtocol(printer.base_url);
+  const response = await fetch(`${baseUrl}/server/files/list?root=gcodes`, {
     headers: printer.api_key ? { 'X-Api-Key': printer.api_key } : {},
   });
 
@@ -97,7 +109,8 @@ export const listPrinterFiles = async (printer: Printer): Promise<any[]> => {
 };
 
 export const getBedMesh = async (printer: Printer): Promise<any> => {
-  const response = await fetch(`${printer.base_url}/printer/objects/query?objects=bed_mesh`, {
+  const baseUrl = ensureProtocol(printer.base_url);
+  const response = await fetch(`${baseUrl}/printer/objects/query?objects=bed_mesh`, {
     headers: printer.api_key ? { 'X-Api-Key': printer.api_key } : {},
   });
 
@@ -135,12 +148,13 @@ const uploadFileToPrinter = async (printer: Printer, fileName: string, storagePa
   }
 
   // 2. Upload file to Printer (Moonraker) via client's local network
+  const baseUrl = ensureProtocol(printer.base_url);
   const formData = new FormData();
   // We need to convert the Blob to a File object to ensure the filename is correctly passed in the multipart form data
   const file = new File([fileBlob], fileName, { type: fileBlob.type });
   formData.append("file", file, fileName);
 
-  const moonrakerUrl = `${printer.base_url}/server/files/upload`;
+  const moonrakerUrl = `${baseUrl}/server/files/upload`;
   const headers = new Headers();
   if (printer.api_key) {
     headers.append("X-Api-Key", printer.api_key);
@@ -211,7 +225,8 @@ export const startPrintJobClient = async (jobId: string): Promise<{ message: str
   }
 
   // 2. Send Moonraker command to start print (assuming file is already uploaded during assignment)
-  const moonrakerUrl = `${printer.base_url}/printer/print/start`;
+  const baseUrl = ensureProtocol(printer.base_url);
+  const moonrakerUrl = `${baseUrl}/printer/print/start`;
   const headers = new Headers();
   headers.append('Content-Type', 'application/json');
   if (printer.api_key) {
@@ -333,7 +348,8 @@ export const cancelActivePrint = async (printerId: string, reason: string): Prom
   }
 
   // 2. Send Moonraker command to cancel print
-  const moonrakerUrl = `${printerData.base_url}/printer/print/cancel`;
+  const baseUrl = ensureProtocol(printerData.base_url);
+  const moonrakerUrl = `${baseUrl}/printer/print/cancel`;
   const headers = new Headers();
   if (printerData.api_key) {
     headers.append("X-Api-Key", printerData.api_key);
